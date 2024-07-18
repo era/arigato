@@ -1,5 +1,5 @@
 # Arigato
-A toy programming language targetting the WebAssembly VM made while live streaming.
+A toy programming language targeting the WebAssembly VM made while live streaming.
 
 ![a cat which is the logo of the language](./docs/assets/imgs/logo.png)
 
