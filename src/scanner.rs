@@ -22,6 +22,8 @@ pub enum Token {
     GreaterEqual,
     Less,
     LessEqual,
+    Comment,
+    Space,
 
     // Literals
     Identifier,
@@ -47,6 +49,8 @@ pub enum Token {
 
     Eof,
 }
+
+const UNEXPECTED_CHAR: &str = "unexpected character";
 
 //TODO add user-friendly message by implementing Debug manually
 #[derive(Debug, PartialEq)]
@@ -74,7 +78,7 @@ where
 impl<I: std::iter::Iterator<Item = char>> Scanner<I> {
     pub fn new(input: I) -> Self {
         Self {
-            input: input,
+            input,
             curr_lexeme_start: 0,
             curr_pos: 0,
             had_error: false,
@@ -87,6 +91,7 @@ impl<I: std::iter::Iterator<Item = char>> Scanner<I> {
         let mut errors = vec![];
         while let Some(token) = self.next() {
             match token {
+                Ok(Token::Space) | Ok(Token::Comment) => continue,
                 Ok(_) => todo!(),
                 Err(e) => errors.push(e),
             };
@@ -94,36 +99,82 @@ impl<I: std::iter::Iterator<Item = char>> Scanner<I> {
         tokens.push(Token::Eof);
 
         if errors.is_empty() {
-            return Ok(tokens);
+            Ok(tokens)
         } else {
-            return Err(errors);
+            Err(errors)
         }
     }
 
     fn next(&mut self) -> Option<Result<Token, LexicalError>> {
-        let c = self.advance();
-        //TODO improve this
-        if let None = c {
-            return None;
-        }
-
-        let token = match c.unwrap() {
+        let token = match self.advance()? {
             '{' => Ok(Token::LeftBrace),
+            '}' => Ok(Token::RightBrace),
+            '(' => Ok(Token::LeftParen),
+            ')' => Ok(Token::RightParen),
+            ',' => Ok(Token::Comma),
+            '.' => Ok(Token::Dot),
+            '-' => Ok(Token::Minus),
+            '+' => Ok(Token::Plus),
+            ';' => Ok(Token::SemiColon),
+            '*' => Ok(Token::Star),
+            '!' if self.advance_if_match('=') => Ok(Token::BangEqual),
+            '!' => Ok(Token::Bang),
+            '=' if self.advance_if_match('=') => Ok(Token::Equal),
+            '=' => Ok(Token::Assign),
+            '<' if self.advance_if_match('=') => Ok(Token::LessEqual),
+            '<' => Ok(Token::Less),
+            '>' if self.advance_if_match('=') => Ok(Token::GreaterEqual),
+            '>' => Ok(Token::Greater),
+            '/' => {
+                if self.advance_if_match('/') {
+                    // this is a comment, we can ignore it.
+                    // the comment is valid until the end of the line
+                    while self.peek() == Some('\n') {
+                        self.advance();
+                    }
+                    Ok(Token::Comment)
+                } else {
+                    Ok(Token::Slash)
+                }
+            }
+            ' ' | '\r' | '\t' => Ok(Token::Space),
+            '\n' => {
+                self.curr_line += 1;
+                Ok(Token::Space)
+            }
             _ => Err(LexicalError {
                 line: self.curr_line,
                 col: self.curr_pos, //TODO not sure
-                description: "Unexpected character",
+                description: UNEXPECTED_CHAR,
             }),
         };
 
         Some(token)
     }
 
+    // peek the next char without consuming it.
+    fn peek(&mut self) -> Option<char> {
+        self.input.nth(self.curr_pos)
+    }
+
     /// moves towards the next token, it can move
     /// more than one char at time.
     fn advance(&mut self) -> Option<char> {
+        let c = self.input.nth(self.curr_pos);
         self.curr_pos += 1;
-        self.input.nth(self.curr_pos)
+        c
+    }
+
+    // only consumes char if it matches the expected value.
+    fn advance_if_match(&mut self, expected: char) -> bool {
+        match self.input.nth(self.curr_pos) {
+            None => false,
+            Some(c) if c == expected => {
+                self.curr_pos += 1;
+                true
+            }
+            Some(_) => false,
+        }
     }
 }
 
@@ -137,15 +188,15 @@ mod test {
         assert_eq!(Ok(vec![Token::Eof]), scanner.scan());
     }
 
-    //TODO create table test
+    //TODO create table test, also this test does not make sense
     #[test]
     pub fn scanner_with_error() {
-        let mut scanner = Scanner::new("--".chars());
+        let mut scanner = Scanner::new("c".chars());
         assert_eq!(
             Err(vec![LexicalError {
                 line: 1,
                 col: 1,
-                description: "Unexpected character" //TODO avoid spreading this string
+                description: UNEXPECTED_CHAR,
             }]),
             scanner.scan()
         );
