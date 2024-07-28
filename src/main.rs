@@ -1,4 +1,6 @@
 mod scanner;
+mod lang;
+mod ast;
 
 use clap::Parser;
 use clap::ValueEnum;

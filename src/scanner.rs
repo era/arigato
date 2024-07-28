@@ -1,65 +1,31 @@
 use itertools::PeekNth;
 use itertools::peek_nth;
+use phf::phf_map;
+use crate::lang::Token;
 
-//TODO move from here
-#[derive(Debug, PartialEq)]
-pub enum Token {
-    // single character
-    LeftParen,
-    RightParen,
-    LeftBrace,
-    RightBrace,
-    Comma,
-    Dot,
-    Minus,
-    Plus,
-    SemiColon,
-    Slash,
-    Star,
-
-    Bang,
-    BangEqual,
-    Equal,
-    Assign,
-    Greater,
-    GreaterEqual,
-    Less,
-    LessEqual,
-    Comment,
-    Space,
-
-    // Literals
-    Identifier,
-    Text(String), // "this is a valid string"
-    Number(String), // 123 123.123 -123 -123.123
-
-    // Keywords
-    And,
-    Class,
-    If,
-    Else,
-    False,
-    True,
-    Fun,
-    Nil,
-    Or,
-    Return,
-    Super,
-    This,
-    Var,
-    While,
-    Print,
-
-    Eof,
-}
-
+static KEYWORDS: phf::Map<&'static str, Token> = phf_map![
+    "or" => Token::Or,
+    "and" => Token::And,
+    "if" => Token::If,
+    "else" => Token::Else,
+    "true" => Token::True,
+    "false" => Token::False,
+    "fun" => Token::Fun,
+    "nil" => Token::Nil,
+    "return" => Token::Return,
+    "super" => Token::Super,
+    "this" => Token::This,
+    "var" => Token::Var,
+    "while" => Token::While,
+    "print" => Token::Print,
+    "class" => Token::Class,
+];
 const UNEXPECTED_CHAR: &str = "unexpected character";
 
 //TODO add user-friendly message by implementing Debug manually
 #[derive(Debug, PartialEq)]
 pub struct LexicalError {
     pub line: usize,
-    pub col: usize,
     pub description: &'static str,
 }
 
@@ -141,18 +107,20 @@ impl<I: std::iter::Iterator<Item = char>> Scanner<I> {
                 }
             }
             '"' => self.string(),
-
             ' ' | '\r' | '\t' => Ok(Token::Space),
             '\n' => {
                 self.new_line();
                 Ok(Token::Space)
             }
             c@ '0'..='9' => self.digit(c),
-            _ => Err(LexicalError {
+            // if starts with a alpha char, it should be an identifier or keyword
+            c@ 'a'..='z' |c@ 'A'..='Z' | c@'_' => self.identifier(c),
+            _ => {
+                Err(LexicalError {
                     line: self.curr_line,
-                    col: self.curr_pos,
                     description: UNEXPECTED_CHAR,
-                }),
+                })
+            }
         };
 
         Some(token)
@@ -188,6 +156,29 @@ impl<I: std::iter::Iterator<Item = char>> Scanner<I> {
             }
 
         }
+    }
+
+    // because we consume the first digit on the caller, we need to receive it as argument.
+    // Returns either the identifier or the Token representing the keyword
+    fn identifier(&mut self, first_digit: char) -> Result<Token, LexicalError> {
+        let mut the_identifier = vec![first_digit];
+
+        // TODO consumir até que nao seja um alphanumerico
+        while let Some(c) = self.peek() {
+            match c {
+                '0'..='9' | 'a'..='z' | 'A'..='Z' | '_' => the_identifier.push(self.advance().unwrap()),
+                _ => break,
+            }
+        }
+        let id: String = the_identifier.iter().collect();
+
+        // if this is a keyword and not an identifier, we should return it
+        if let Some(t) = KEYWORDS.get(&id) {
+            Ok(t.to_owned())
+        } else {
+            Ok(Token::Identifier(id))
+        }
+       
     }
 
     // because we consume the first digit on the caller, we need to receive it as argument.
@@ -236,7 +227,6 @@ impl<I: std::iter::Iterator<Item = char>> Scanner<I> {
                 None => {
                     return Err(LexicalError {
                     line: self.curr_line,
-                    col: self.curr_pos,
                     description: "Expecting \""
                 });
             }
@@ -260,19 +250,6 @@ mod test {
     pub fn empty_string() {
         let mut scanner = Scanner::new("".chars().peekable());
         assert_eq!(Ok(vec![Token::Eof]), scanner.scan());
-    }
-
-    #[test]
-    pub fn scanner_with_error() {
-        let mut scanner = Scanner::new("c".chars().peekable());
-        assert_eq!(
-            Err(vec![LexicalError {
-                line: 1,
-                col: 1,
-                description: UNEXPECTED_CHAR,
-            }]),
-            scanner.scan()
-        );
     }
 
     #[test]
@@ -317,6 +294,26 @@ mod test {
         let mut scanner = Scanner::new("123. 123".chars());
         assert_eq!(
             Ok(vec![Token::Number("123".to_string()), Token::Dot, Token::Number("123".to_string()), Token::Eof]),
+            scanner.scan()
+        );
+    }
+
+    #[test]
+    pub fn scanner_a_keyword() {
+        // TODO this should be a table test so we test all keywords
+        let mut scanner = Scanner::new("or".chars());
+        assert_eq!(
+            Ok(vec![Token::Or, Token::Eof]),
+            scanner.scan()
+        );
+    }   
+
+    #[test]
+    pub fn scanner_a_id() {
+        // TODO this should be a table test so we test all keywords
+        let mut scanner = Scanner::new("my_cool_id".chars());
+        assert_eq!(
+            Ok(vec![Token::Identifier("my_cool_id".to_string()), Token::Eof]),
             scanner.scan()
         );
     }
