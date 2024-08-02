@@ -19,6 +19,10 @@ static KEYWORDS: phf::Map<&'static str, Token> = phf_map![
     "while" => Token::While,
     "print" => Token::Print,
     "class" => Token::Class,
+    "extends" => Token::Extends,
+    "export" => Token::Export,
+    "external" => Token::External,
+    "require" => Token::Require
 ];
 const UNEXPECTED_CHAR: &str = "unexpected character";
 

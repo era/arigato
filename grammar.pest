@@ -1,0 +1,24 @@
+// although we don't use pest for now, this file follows its convention
+// https://pest.rs/
+
+alpha = { 'a'..'z' | 'A'..'Z' }
+digit = { '0'..'9' }
+number = {digit ~ "."? ~ (digit)*}
+text = {"\"" ~  (!"\"" ~ ANY)* ~ "\""}
+identifier = {  alpha ~ (alpha | digit)* }
+
+stmt = {}
+
+// declarations
+declaration = { classDecl | funcDecl | varDecl | stmt }
+classDecl = {"class" ~ identifier ~ ("extends" ~ identifier)? ~ "{" ~ funcDecl* ~ "}" }
+funcDecl = {"fun" ~ identifier ~ "(" ~ (identifier ~ ("," ~identifier)*)? ~ ")" ~ block }
+varDecl = {"var" ~ identifier ~ ("=" expr)? ~ ";"}
+
+
+// aux
+
+block = { "{" ~ declaration ~"}" }
+
+// Program
+program = declaration* ~ EOF 

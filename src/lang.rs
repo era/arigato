@@ -46,6 +46,10 @@ pub enum Token {
     Var,
     While,
     Print,
+    Extends,
+    Export,
+    External,
+    Require,
 
     Eof,
 }
