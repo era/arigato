@@ -11,6 +11,7 @@ pub enum ParserError {
 pub enum Expr {
     Unary(Token, Box<Expr>),
     Binary(Box<Expr>, Token, Box<Expr>),
+    Expr(Box<Expr>),
     EOF
 }
 
@@ -99,11 +100,7 @@ impl Parser {
         loop {
             match self.peek() {
                 Some(&Token::Minus) | Some(&Token::Plus) => {
-                    let op = match self.advance() {
-                        Some(op) => op,
-                        None => return Ok(Box::new(Expr::EOF))
-                    };
-
+                    let op = self.advance().unwrap();
                     let right = self.factor()?;
                     factor = Box::new(Expr::Binary(factor, op, right))
                 }
@@ -120,11 +117,7 @@ impl Parser {
         loop {
             match self.peek() {
                 Some(&Token::Slash) | Some(&Token::Star) => {
-                    let op = match self.advance() {
-                        Some(op) => op,
-                        None => return Ok(Box::new(Expr::EOF))
-                    };
-
+                    let op = self.advance().unwrap();
                     let right = self.unary()?;
                     unary = Box::new(Expr::Binary(unary, op, right))
                 }
@@ -136,6 +129,23 @@ impl Parser {
 
     // ( "!" | "-" ) unary | call ;
     fn unary(&mut self) -> Result<Box<Expr>> {
-        todo!()
+        match self.peek() {
+            Some(&Token::Bang) | Some(&Token::Minus) => {
+                let op = self.advance().unwrap();
+                let unary = self.unary()?;
+                Ok(Box::new(Expr::Unary(op, unary)))
+            }
+            Some(_) => self.primary(),
+            None => Ok(Box::new(Expr::EOF))
+        }
+    }
+
+    // "true" | "false" | "nil" | "this"
+    // | NUMBER | STRING | IDENTIFIER | "(" expression ")"
+    // | "super" "." IDENTIFIER ;
+    fn primary(&mut self) -> Result<Box<Expr>> {
+        match self.peek() {
+            _ => todo!()
+        }
     }
 }
