@@ -5,13 +5,14 @@ use itertools::PeekNth;
 use itertools::peek_nth;
 
 pub enum ParserError {
-    Generic
+    Generic(&'static str)
 }
 
 pub enum Expr {
     Unary(Token, Box<Expr>),
     Binary(Box<Expr>, Token, Box<Expr>),
-    Expr(Box<Expr>),
+    Literal(Token),
+    Grouping(Box<Expr>),
     EOF
 }
 
@@ -145,7 +146,25 @@ impl Parser {
     // | "super" "." IDENTIFIER ;
     fn primary(&mut self) -> Result<Box<Expr>> {
         match self.peek() {
-            _ => todo!()
+            // literals
+            Some(&Token::True) | Some(&Token::False) |
+            Some(&Token::Nil) | Some(&Token::Number(_)) |
+            Some(&Token::Text(_)) => Ok(Box::new(Expr::Literal(self.advance().unwrap()))),
+            // identifiers
+            Some(&Token::This) | Some(&Token::Identifier(_)) | Some(&Token::Super) => todo!(),
+
+            // braces expression
+            Some(&Token::LeftBrace) => {
+                self.advance();
+                let expr = self.expression()?;
+
+                if let Some(Token::RightParen) = self.advance() {
+                    Ok(Box::new(Expr::Grouping(expr)))
+                } else {
+                    Err(ParserError::Generic("expecting ')'"))
+                }
+            }
+            _ => Err(ParserError::Generic("error while processing primary. Unexpected token"))
         }
     }
 }
