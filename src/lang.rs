@@ -45,6 +45,7 @@ pub enum Token {
     This,
     Var,
     While,
+    For,
     Print,
     Extends,
     Export,

@@ -48,6 +48,10 @@ impl Parser {
         self.tokens.next()
     }
 
+    fn parse(&mut self) -> Result<Box<Expr>> {
+        self.expression()
+    }
+
     // assignment
     fn expression(&mut self) -> Result<Box<Expr>> {
         self.equality()
@@ -167,6 +171,24 @@ impl Parser {
                 }
             }
             _ => Err(ParserError::Generic("error while processing primary. Unexpected token"))
+        }
+    }
+    // when there is an error, we enter "panic mode" and we need to go to the next
+    // possible working statement. This is what synchronize is about.
+    fn synchronize(&mut self) {
+        while let Some(token) = self.advance() {
+            match token {
+                // if we are at a semicolon it means we for sure passed the last problem
+                Token::SemiColon => break,
+                Token::Class => break,
+                Token::Fun => break,
+                Token::Var => break,
+                Token::For => break,
+                Token::While => break,
+                Token::Print => break,
+                Token::Return => break,
+                _ => continue,
+            }
         }
     }
 }
