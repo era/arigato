@@ -1,6 +1,7 @@
 use crate::ast::Expr;
 use crate::lang::Token;
 
+#[derive(PartialEq)]
 pub enum Type {
     Number(f64),
     Text(String),
@@ -68,10 +69,33 @@ impl Interpreter {
                 (Type::Number(l), Type::Number(r)) => Ok(Type::Number(l - r)),
                 _ => Err(Error::UnexpectedExpr("expecting a number on both sides of op")),
             }
-            Token::Slash => todo!(),
-            Token::Star => todo!(),
-            //TODO comparisons
-            _ => todo!()
+            Token::Slash => match (left, right) {
+                (Type::Number(l), Type::Number(r)) => Ok(Type::Number(l / r)),
+                _ => Err(Error::UnexpectedExpr("expecting a number on both sides of op")),
+            },
+            Token::Star => match (left, right) {
+                (Type::Number(l), Type::Number(r)) => Ok(Type::Number(l * r)),
+                _ => Err(Error::UnexpectedExpr("expecting a number on both sides of op")),
+            },
+            Token::Equal => Ok(Type::Bool(left == right)),
+            Token::BangEqual => Ok(Type::Bool(left != right)),
+            Token::Less => match (left, right) {
+                (Type::Number(l), Type::Number(r)) => Ok(Type::Bool(l < r)),
+                _ => Err(Error::UnexpectedExpr("expecting a number on both sides of op")),
+            },
+            Token::LessEqual => match (left, right) {
+                (Type::Number(l), Type::Number(r)) => Ok(Type::Bool(l <= r)),
+                _ => Err(Error::UnexpectedExpr("expecting a number on both sides of op")),
+            },
+            Token::Greater => match (left, right) {
+                (Type::Number(l), Type::Number(r)) => Ok(Type::Bool(l > r)),
+                _ => Err(Error::UnexpectedExpr("expecting a number on both sides of op")),
+            },
+            Token::GreaterEqual => match (left, right) {
+                (Type::Number(l), Type::Number(r)) => Ok(Type::Bool(l >= r)),
+                _ => Err(Error::UnexpectedExpr("expecting a number on both sides of op")),
+            },
+            _ => unreachable!(),
         }
     }
 }
