@@ -1,11 +1,11 @@
 use std::mem;
 
 use crate::lang::Token;
-use itertools::PeekNth;
 use itertools::peek_nth;
+use itertools::PeekNth;
 
 pub enum ParserError {
-    Generic(&'static str)
+    Generic(&'static str),
 }
 
 pub enum Expr {
@@ -14,7 +14,7 @@ pub enum Expr {
     Literal(Token),
     Identifier(Token),
     Grouping(Box<Expr>),
-    EOF
+    EOF,
 }
 
 pub type Result<I> = std::result::Result<I, ParserError>;
@@ -28,7 +28,7 @@ pub type Result<I> = std::result::Result<I, ParserError>;
 /// Unary       ! -         Right
 pub struct Parser {
     tokens: PeekNth<std::vec::IntoIter<Token>>,
-    curr: usize
+    curr: usize,
 }
 // Recursive Descent Parsing
 impl Parser {
@@ -66,15 +66,15 @@ impl Parser {
                 Some(&Token::Equal) | Some(&Token::BangEqual) => {
                     let op = match self.advance() {
                         Some(op) => op,
-                        None => return Ok(Box::new(Expr::EOF))
+                        None => return Ok(Box::new(Expr::EOF)),
                     };
 
                     let right = self.term()?;
                     comparison = Box::new(Expr::Binary(comparison, op, right));
-                },
+                }
                 _ => break,
             }
-        } 
+        }
 
         Ok(comparison)
     }
@@ -84,10 +84,13 @@ impl Parser {
         let mut term = self.term()?;
         loop {
             match self.peek() {
-                Some(&Token::Greater) | Some(&Token::GreaterEqual) | Some(Token::Less) | Some(Token::LessEqual) => {
+                Some(&Token::Greater)
+                | Some(&Token::GreaterEqual)
+                | Some(Token::Less)
+                | Some(Token::LessEqual) => {
                     let op = match self.advance() {
                         Some(op) => op,
-                        None => return Ok(Box::new(Expr::EOF))
+                        None => return Ok(Box::new(Expr::EOF)),
                     };
 
                     let right = self.term()?;
@@ -142,7 +145,7 @@ impl Parser {
                 Ok(Box::new(Expr::Unary(op, unary)))
             }
             Some(_) => self.primary(),
-            None => Ok(Box::new(Expr::EOF))
+            None => Ok(Box::new(Expr::EOF)),
         }
     }
 
@@ -152,12 +155,15 @@ impl Parser {
     fn primary(&mut self) -> Result<Box<Expr>> {
         match self.peek() {
             // literals
-            Some(&Token::True) | Some(&Token::False) |
-            Some(&Token::Nil) | Some(&Token::Number(_)) |
-                Some(&Token::Text(_)) => Ok(Box::new(Expr::Literal(self.advance().unwrap()))),
+            Some(&Token::True)
+            | Some(&Token::False)
+            | Some(&Token::Nil)
+            | Some(&Token::Number(_))
+            | Some(&Token::Text(_)) => Ok(Box::new(Expr::Literal(self.advance().unwrap()))),
             // identifiers FIXME
-            Some(&Token::This) | Some(&Token::Identifier(_)) |
-             Some(&Token::Super) => Ok(Box::new(Expr::Identifier(self.advance().unwrap()))),
+            Some(&Token::This) | Some(&Token::Identifier(_)) | Some(&Token::Super) => {
+                Ok(Box::new(Expr::Identifier(self.advance().unwrap())))
+            }
 
             // braces expression
             Some(&Token::LeftBrace) => {
@@ -170,7 +176,9 @@ impl Parser {
                     Err(ParserError::Generic("expecting ')'"))
                 }
             }
-            _ => Err(ParserError::Generic("error while processing primary. Unexpected token"))
+            _ => Err(ParserError::Generic(
+                "error while processing primary. Unexpected token",
+            )),
         }
     }
     // when there is an error, we enter "panic mode" and we need to go to the next

@@ -1,7 +1,7 @@
-use itertools::PeekNth;
-use itertools::peek_nth;
-use phf::phf_map;
 use crate::lang::Token;
+use itertools::peek_nth;
+use itertools::PeekNth;
+use phf::phf_map;
 
 static KEYWORDS: phf::Map<&'static str, Token> = phf_map![
     "or" => Token::Or,
@@ -117,15 +117,13 @@ impl<I: std::iter::Iterator<Item = char>> Scanner<I> {
                 self.new_line();
                 Ok(Token::Space)
             }
-            c@ '0'..='9' => self.digit(c),
+            c @ '0'..='9' => self.digit(c),
             // if starts with a alpha char, it should be an identifier or keyword
-            c@ 'a'..='z' |c@ 'A'..='Z' | c@'_' => self.identifier(c),
-            _ => {
-                Err(LexicalError {
-                    line: self.curr_line,
-                    description: UNEXPECTED_CHAR,
-                })
-            }
+            c @ 'a'..='z' | c @ 'A'..='Z' | c @ '_' => self.identifier(c),
+            _ => Err(LexicalError {
+                line: self.curr_line,
+                description: UNEXPECTED_CHAR,
+            }),
         };
 
         Some(token)
@@ -159,7 +157,6 @@ impl<I: std::iter::Iterator<Item = char>> Scanner<I> {
                 self.curr_pos += 1;
                 true
             }
-
         }
     }
 
@@ -171,7 +168,9 @@ impl<I: std::iter::Iterator<Item = char>> Scanner<I> {
         // TODO consumir até que nao seja um alphanumerico
         while let Some(c) = self.peek() {
             match c {
-                '0'..='9' | 'a'..='z' | 'A'..='Z' | '_' => the_identifier.push(self.advance().unwrap()),
+                '0'..='9' | 'a'..='z' | 'A'..='Z' | '_' => {
+                    the_identifier.push(self.advance().unwrap())
+                }
                 _ => break,
             }
         }
@@ -183,7 +182,6 @@ impl<I: std::iter::Iterator<Item = char>> Scanner<I> {
         } else {
             Ok(Token::Identifier(id))
         }
-       
     }
 
     // because we consume the first digit on the caller, we need to receive it as argument.
@@ -201,15 +199,15 @@ impl<I: std::iter::Iterator<Item = char>> Scanner<I> {
                 ('.', _) if already_had_a_dot => break,
                 // the current char is a dot (the first one), and the next char is a digit
                 // so this is a float.
-                ('.', Some('0'..='9')) =>  {
-                            already_had_a_dot = true;
-                            the_digit.push(self.advance().unwrap());
-                            continue
-                        }
+                ('.', Some('0'..='9')) => {
+                    already_had_a_dot = true;
+                    the_digit.push(self.advance().unwrap());
+                    continue;
+                }
                 // the current char is a digit, so we can just handle it.
                 ('0'..='9', _) => {
                     the_digit.push(self.advance().unwrap());
-                    continue
+                    continue;
                 }
                 // No digits anymore, we should break
                 _ => break,
@@ -219,31 +217,29 @@ impl<I: std::iter::Iterator<Item = char>> Scanner<I> {
     }
 
     fn string(&mut self) -> Result<Token, LexicalError> {
-       let mut the_string = vec![];
-       // while we don't meet the end of the string keep fetching the value.
+        let mut the_string = vec![];
+        // while we don't meet the end of the string keep fetching the value.
         while self.peek() != Some('"') {
-
             if self.peek() == Some('\n') {
                 self.new_line();
             }
-            
+
             match self.advance() {
                 Some(c) => the_string.push(c),
                 None => {
                     return Err(LexicalError {
-                    line: self.curr_line,
-                    description: "Expecting \""
-                });
+                        line: self.curr_line,
+                        description: "Expecting \"",
+                    });
+                }
             }
-            }
-            
         }
-        
+
         if self.peek() == Some('"') {
             self.advance();
         }
-        
-       Ok(Token::Text(the_string.into_iter().collect()))
+
+        Ok(Token::Text(the_string.into_iter().collect()))
     }
 }
 
@@ -261,7 +257,10 @@ mod test {
     pub fn scanner_a_string_literal() {
         let mut scanner = Scanner::new("\"this is a great string\"".chars());
         assert_eq!(
-            Ok(vec![Token::Text("this is a great string".to_string()), Token::Eof]),
+            Ok(vec![
+                Token::Text("this is a great string".to_string()),
+                Token::Eof
+            ]),
             scanner.scan()
         );
     }
@@ -298,7 +297,12 @@ mod test {
         // TODO this test in the future should throw an error, so we will need to fix it.
         let mut scanner = Scanner::new("123. 123".chars());
         assert_eq!(
-            Ok(vec![Token::Number("123".to_string()), Token::Dot, Token::Number("123".to_string()), Token::Eof]),
+            Ok(vec![
+                Token::Number("123".to_string()),
+                Token::Dot,
+                Token::Number("123".to_string()),
+                Token::Eof
+            ]),
             scanner.scan()
         );
     }
@@ -307,18 +311,18 @@ mod test {
     pub fn scanner_a_keyword() {
         // TODO this should be a table test so we test all keywords
         let mut scanner = Scanner::new("or".chars());
-        assert_eq!(
-            Ok(vec![Token::Or, Token::Eof]),
-            scanner.scan()
-        );
-    }   
+        assert_eq!(Ok(vec![Token::Or, Token::Eof]), scanner.scan());
+    }
 
     #[test]
     pub fn scanner_a_id() {
         // TODO this should be a table test so we test all keywords
         let mut scanner = Scanner::new("my_cool_id".chars());
         assert_eq!(
-            Ok(vec![Token::Identifier("my_cool_id".to_string()), Token::Eof]),
+            Ok(vec![
+                Token::Identifier("my_cool_id".to_string()),
+                Token::Eof
+            ]),
             scanner.scan()
         );
     }

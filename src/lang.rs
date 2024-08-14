@@ -1,4 +1,3 @@
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     // single character
@@ -27,7 +26,7 @@ pub enum Token {
 
     // Literals
     Identifier(String),
-    Text(String), // "this is a valid string"
+    Text(String),   // "this is a valid string"
     Number(String), // 123 123.123
 
     // Keywords
