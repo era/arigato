@@ -20,6 +20,7 @@ impl Interpreter {
             Expr::Literal(token) => self.literal_expr(token),
             Expr::Grouping(expr) => self.grouping_expr(*expr),
             Expr::Unary(t, e) => self.unary_expr(t, *e),
+            Expr::Binary(l, t, r) => self.binary(*l, *r, t),
             _ => todo!(),
         }
     }
@@ -51,6 +52,26 @@ impl Interpreter {
                 _ => Err(Error::UnexpectedExpr("expecting only booleans")),
             },
             _ => unreachable!(),
+        }
+    }
+
+    fn binary(&mut self, left: Expr, right: Expr, op: Token) -> Result<Type, Error> {
+        let left = self.evaluate(left)?;
+        let right = self.evaluate(right)?;
+        match op {
+            Token::Plus => match (left, right) {
+                (Type::Number(l), Type::Number(r)) => Ok(Type::Number(l + r)),
+                (Type::Text(l), Type::Text(r)) => Ok(Type::Text(format!("{l}{r}"))),
+                _ => Err(Error::UnexpectedExpr("expecting a text or a number on both sides of op"))
+            }
+            Token::Minus => match (left, right) {
+                (Type::Number(l), Type::Number(r)) => Ok(Type::Number(l - r)),
+                _ => Err(Error::UnexpectedExpr("expecting a number on both sides of op")),
+            }
+            Token::Slash => todo!(),
+            Token::Star => todo!(),
+            //TODO comparisons
+            _ => todo!()
         }
     }
 }
