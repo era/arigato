@@ -4,6 +4,7 @@ use crate::lang::Token;
 use itertools::peek_nth;
 use itertools::PeekNth;
 
+#[derive(Debug)]
 pub enum ParserError {
     Generic(&'static str),
 }
@@ -15,6 +16,13 @@ pub enum Expr {
     Identifier(Token),
     Grouping(Box<Expr>),
     EOF,
+}
+
+pub enum Statement {}
+
+pub enum G {
+    Statement(Statement),
+    Expr(Expr)
 }
 
 pub type Result<I> = std::result::Result<I, ParserError>;
@@ -32,7 +40,7 @@ pub struct Parser {
 }
 // Recursive Descent Parsing
 impl Parser {
-    fn new(tokens: Vec<Token>) -> Self {
+    pub fn new(tokens: Vec<Token>) -> Self {
         Self {
             tokens: peek_nth(tokens.into_iter()),
             curr: 0,
@@ -48,8 +56,12 @@ impl Parser {
         self.tokens.next()
     }
 
-    fn parse(&mut self) -> Result<Box<Expr>> {
-        self.expression()
+    pub fn parse(&mut self) -> Result<Vec<G>> {
+        let mut g = vec![];
+        while let Some(_) = self.peek() {
+            g.push(G::Expr(*self.expression()?));
+        }
+        Ok(g)
     }
 
     // assignment

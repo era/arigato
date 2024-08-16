@@ -33,7 +33,9 @@ fn main() {
         Mode::AstWalking => {
             //TODO better error messages in case script is missing
             let script = fs::read_to_string(args.script.unwrap()).unwrap();
-            scanner::Scanner::new(script.chars());
+            let tokens = scanner::Scanner::new(script.chars()).scan().unwrap();
+            let tree = ast::Parser::new(tokens).parse().unwrap();
+            interpreter::Interpreter::new().interprete(tree).unwrap();
         }
         _ => todo!(),
     }

@@ -1,4 +1,6 @@
 use crate::ast::Expr;
+use crate::ast::Statement;
+use crate::ast::G;
 use crate::lang::Token;
 
 #[derive(PartialEq)]
@@ -8,6 +10,7 @@ pub enum Type {
     Bool(bool),
 }
 
+#[derive(Debug)]
 pub enum Error {
     UnexpectedExpr(&'static str),
 }
@@ -16,6 +19,28 @@ pub struct Interpreter {}
 
 // a tree-walking interpreter implemented by using the visitor pattern.
 impl Interpreter {
+
+    pub fn new() -> Self {
+        Self{}
+    }
+
+    pub fn interprete(&mut self, program: Vec<G>) -> Result<(), Error> {
+        for s in program {
+            match s {
+                G::Expr(expr) => {
+                    self.evaluate(expr)?;
+                    ()
+                }
+                G::Statement(stmt) => self.evaluate_stmt(stmt)?,
+            };
+        }
+        Ok(())
+    }
+
+    fn evaluate_stmt(&mut self, stmt: Statement) -> Result<(), Error> {
+        todo!()
+    }
+
     fn evaluate(&mut self, expr: Expr) -> Result<Type, Error> {
         match expr {
             Expr::Literal(token) => self.literal_expr(token),
