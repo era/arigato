@@ -9,6 +9,7 @@ pub enum ParserError {
     Generic(&'static str),
 }
 
+#[derive(Debug)]
 pub enum Expr {
     Unary(Token, Box<Expr>),
     Binary(Box<Expr>, Token, Box<Expr>),
@@ -187,6 +188,10 @@ impl Parser {
                 } else {
                     Err(ParserError::Generic("expecting ')'"))
                 }
+            }
+            Some(Token::Eof) => {
+                self.advance();
+                Ok(Box::new(Expr::EOF))
             }
             _ => Err(ParserError::Generic(
                 "error while processing primary. Unexpected token",

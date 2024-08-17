@@ -8,6 +8,7 @@ pub enum Type {
     Number(f64),
     Text(String),
     Bool(bool),
+    Nil,
 }
 
 #[derive(Debug)]
@@ -47,7 +48,8 @@ impl Interpreter {
             Expr::Grouping(expr) => self.grouping_expr(*expr),
             Expr::Unary(t, e) => self.unary_expr(t, *e),
             Expr::Binary(l, t, r) => self.binary(*l, *r, t),
-            _ => todo!(),
+            Expr::EOF => Ok(Type::Nil),
+            _ => unreachable!(),
         }
     }
 
