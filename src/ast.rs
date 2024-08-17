@@ -14,7 +14,6 @@ pub enum Expr {
     Unary(Token, Box<Expr>),
     Binary(Box<Expr>, Token, Box<Expr>),
     Literal(Token),
-    Identifier(Token),
     Grouping(Box<Expr>),
     EOF,
 }
@@ -207,12 +206,10 @@ impl Parser {
             | Some(&Token::False)
             | Some(&Token::Nil)
             | Some(&Token::Number(_))
-            | Some(&Token::Text(_)) => Ok(Box::new(Expr::Literal(self.advance().unwrap()))),
-            // identifiers FIXME
-            Some(&Token::This) | Some(&Token::Identifier(_)) | Some(&Token::Super) => {
-                Ok(Box::new(Expr::Identifier(self.advance().unwrap())))
-            }
-
+            | Some(&Token::Text(_)) 
+            | Some(&Token::Identifier(_))
+            | Some(&Token::This)
+            | Some(&Token::Super) => Ok(Box::new(Expr::Literal(self.advance().unwrap()))),
             // braces expression
             Some(&Token::LeftBrace) => {
                 self.advance();
