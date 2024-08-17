@@ -19,11 +19,14 @@ pub enum Expr {
     EOF,
 }
 
-pub enum Statement {}
+pub enum Statement {
+    VarDeclaration(String, Option<Box<Expr>>),
+}
 
 pub enum G {
+    // TODO remove this in favour of Statement enum directly
     Statement(Statement),
-    Expr(Expr)
+    Expr(Expr),
 }
 
 pub type Result<I> = std::result::Result<I, ParserError>;
@@ -59,10 +62,42 @@ impl Parser {
 
     pub fn parse(&mut self) -> Result<Vec<G>> {
         let mut g = vec![];
-        while let Some(_) = self.peek() {
-            g.push(G::Expr(*self.expression()?));
+        while let Some(token) = self.peek() {
+            // g.push(G::Expr(*self.expression()?));
+            match token {
+                Token::Var => g.push(G::Statement(self.var_statement()?)),
+                Token::Print => g.push(G::Statement(self.print_statement()?)),
+                _ => g.push(G::Expr(*self.expression()?)), // TODO remove this in the near future
+            }
         }
         Ok(g)
+    }
+
+    fn var_statement(&mut self) -> Result<Statement> {
+        self.advance(); // consumes VAR keyword
+        let identifier_name = match self.advance() {
+            Some(Token::Identifier(name)) => name,
+            _ => return Err(ParserError::Generic("expecting an indentifier")),
+        };
+
+        let value = match self.peek() {
+            Some(Token::Assign) => {
+                self.advance();
+                Some(self.expression()?)
+            }
+            _ => None,
+        };
+
+        match self.peek() {
+            Some(Token::SemiColon) => self.advance(),
+            _ => return Err(ParserError::Generic("expecting a ;")),
+        };
+
+        Ok(Statement::VarDeclaration(identifier_name, value))
+    }
+
+    fn print_statement(&mut self) -> Result<Statement> {
+        todo!()
     }
 
     // assignment

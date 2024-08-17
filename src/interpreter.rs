@@ -20,9 +20,8 @@ pub struct Interpreter {}
 
 // a tree-walking interpreter implemented by using the visitor pattern.
 impl Interpreter {
-
     pub fn new() -> Self {
-        Self{}
+        Self {}
     }
 
     pub fn interprete(&mut self, program: Vec<G>) -> Result<(), Error> {
@@ -90,37 +89,53 @@ impl Interpreter {
             Token::Plus => match (left, right) {
                 (Type::Number(l), Type::Number(r)) => Ok(Type::Number(l + r)),
                 (Type::Text(l), Type::Text(r)) => Ok(Type::Text(format!("{l}{r}"))),
-                _ => Err(Error::UnexpectedExpr("expecting a text or a number on both sides of op"))
-            }
+                _ => Err(Error::UnexpectedExpr(
+                    "expecting a text or a number on both sides of op",
+                )),
+            },
             Token::Minus => match (left, right) {
                 (Type::Number(l), Type::Number(r)) => Ok(Type::Number(l - r)),
-                _ => Err(Error::UnexpectedExpr("expecting a number on both sides of op")),
-            }
+                _ => Err(Error::UnexpectedExpr(
+                    "expecting a number on both sides of op",
+                )),
+            },
             Token::Slash => match (left, right) {
                 (Type::Number(l), Type::Number(r)) => Ok(Type::Number(l / r)),
-                _ => Err(Error::UnexpectedExpr("expecting a number on both sides of op")),
+                _ => Err(Error::UnexpectedExpr(
+                    "expecting a number on both sides of op",
+                )),
             },
             Token::Star => match (left, right) {
                 (Type::Number(l), Type::Number(r)) => Ok(Type::Number(l * r)),
-                _ => Err(Error::UnexpectedExpr("expecting a number on both sides of op")),
+                _ => Err(Error::UnexpectedExpr(
+                    "expecting a number on both sides of op",
+                )),
             },
             Token::Equal => Ok(Type::Bool(left == right)),
             Token::BangEqual => Ok(Type::Bool(left != right)),
             Token::Less => match (left, right) {
                 (Type::Number(l), Type::Number(r)) => Ok(Type::Bool(l < r)),
-                _ => Err(Error::UnexpectedExpr("expecting a number on both sides of op")),
+                _ => Err(Error::UnexpectedExpr(
+                    "expecting a number on both sides of op",
+                )),
             },
             Token::LessEqual => match (left, right) {
                 (Type::Number(l), Type::Number(r)) => Ok(Type::Bool(l <= r)),
-                _ => Err(Error::UnexpectedExpr("expecting a number on both sides of op")),
+                _ => Err(Error::UnexpectedExpr(
+                    "expecting a number on both sides of op",
+                )),
             },
             Token::Greater => match (left, right) {
                 (Type::Number(l), Type::Number(r)) => Ok(Type::Bool(l > r)),
-                _ => Err(Error::UnexpectedExpr("expecting a number on both sides of op")),
+                _ => Err(Error::UnexpectedExpr(
+                    "expecting a number on both sides of op",
+                )),
             },
             Token::GreaterEqual => match (left, right) {
                 (Type::Number(l), Type::Number(r)) => Ok(Type::Bool(l >= r)),
-                _ => Err(Error::UnexpectedExpr("expecting a number on both sides of op")),
+                _ => Err(Error::UnexpectedExpr(
+                    "expecting a number on both sides of op",
+                )),
             },
             _ => unreachable!(),
         }
