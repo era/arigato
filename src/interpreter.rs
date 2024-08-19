@@ -1,9 +1,11 @@
+use std::collections::HashMap;
+
 use crate::ast::Expr;
 use crate::ast::Statement;
 use crate::ast::G;
 use crate::lang::Token;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum Type {
     Number(f64),
     Text(String),
@@ -14,14 +16,42 @@ pub enum Type {
 #[derive(Debug)]
 pub enum Error {
     UnexpectedExpr(&'static str),
+    NoSuchVariable,
 }
 
-pub struct Interpreter {}
+struct Environment {
+    environment: HashMap<String, Type>,
+}
+
+impl Environment {
+    fn new() -> Self {
+        Self {
+            environment: HashMap::new(),
+        }
+    }
+
+    fn define(&mut self, identifier: String, val: Type) {
+        self.environment.insert(identifier, val);
+    }
+
+    fn get(&mut self, identifier: &str) -> Result<Type, Error> {
+        match self.environment.get(identifier) {
+            None => Err(Error::NoSuchVariable),
+            Some(t) => Ok(t.clone()),
+        }
+    }
+}
+
+pub struct Interpreter {
+    environment: Environment,
+}
 
 // a tree-walking interpreter implemented by using the visitor pattern.
 impl Interpreter {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            environment: Environment::new(),
+        }
     }
 
     pub fn interprete(&mut self, program: Vec<G>) -> Result<(), Error> {

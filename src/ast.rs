@@ -206,7 +206,7 @@ impl Parser {
             | Some(&Token::False)
             | Some(&Token::Nil)
             | Some(&Token::Number(_))
-            | Some(&Token::Text(_)) 
+            | Some(&Token::Text(_))
             | Some(&Token::Identifier(_))
             | Some(&Token::This)
             | Some(&Token::Super) => Ok(Box::new(Expr::Literal(self.advance().unwrap()))),
