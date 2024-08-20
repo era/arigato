@@ -17,10 +17,11 @@ pub enum Type {
 pub enum Error {
     UnexpectedExpr(&'static str),
     NoSuchVariable,
+    VariableNotInitialized,
 }
 
 struct Environment {
-    environment: HashMap<String, Type>,
+    environment: HashMap<String, Option<Type>>,
 }
 
 impl Environment {
@@ -30,11 +31,11 @@ impl Environment {
         }
     }
 
-    fn define(&mut self, identifier: String, val: Type) {
+    fn define(&mut self, identifier: String, val: Option<Type>) {
         self.environment.insert(identifier, val);
     }
 
-    fn get(&mut self, identifier: &str) -> Result<Type, Error> {
+    fn get(&mut self, identifier: &str) -> Result<Option<Type>, Error> {
         match self.environment.get(identifier) {
             None => Err(Error::NoSuchVariable),
             Some(t) => Ok(t.clone()),
@@ -68,7 +69,20 @@ impl Interpreter {
     }
 
     fn evaluate_stmt(&mut self, stmt: Statement) -> Result<(), Error> {
-        todo!()
+        match stmt {
+            Statement::VarDeclaration(id, value) => self.var_declaration(id, value),
+        }
+    }
+
+    fn var_declaration(&mut self, identifier: String, val: Option<Box<Expr>>) -> Result<(), Error> {
+        let value = val.map(|v| self.evaluate(*v));
+
+        match value {
+            Some(Err(e)) => return Err(e),
+            Some(Ok(v)) => self.environment.define(identifier, Some(v)),
+            None => self.environment.define(identifier, None),
+        };
+        Ok(())
     }
 
     fn evaluate(&mut self, expr: Expr) -> Result<Type, Error> {
@@ -90,6 +104,13 @@ impl Interpreter {
                 })?))
             }
             Token::Text(t) => Ok(Type::Text(t)),
+            Token::Identifier(id) => {
+                if let Some(t) = self.environment.get(&id)? {
+                    Ok(t)
+                } else {
+                    Err(Error::VariableNotInitialized)
+                }
+            }
             _ => Err(Error::UnexpectedExpr("expecting only literals")),
         }
     }
