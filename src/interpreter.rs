@@ -115,6 +115,23 @@ impl Interpreter {
         }
     }
 
+    fn contains_key(&self, id: &str) -> bool {
+        todo!()
+    }
+
+    fn put_value(&mut self, id: String, value: Type) -> Result<(), Error> {
+        todo!()
+    }
+
+    fn assign_expr(&mut self, id: String, value: Expr) -> Result<(), Error> {
+        if self.contains_key(&id) {
+            let value = self.evaluate(value)?;
+            self.put_value(id, value)
+        } else {
+            Err(Error::NoSuchVariable)
+        }
+    }
+
     fn grouping_expr(&mut self, g: Expr) -> Result<Type, Error> {
         return self.evaluate(g);
     }

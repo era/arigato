@@ -11,6 +11,7 @@ pub enum ParserError {
 
 #[derive(Debug)]
 pub enum Expr {
+    Assign(String, Box<Expr>),
     Unary(Token, Box<Expr>),
     Binary(Box<Expr>, Token, Box<Expr>),
     Literal(Token),
@@ -99,9 +100,23 @@ impl Parser {
         todo!()
     }
 
-    // assignment
     fn expression(&mut self) -> Result<Box<Expr>> {
-        self.equality()
+        self.assignment()
+    }
+
+    fn assignment(&mut self) -> Result<Box<Expr>> {
+        let expr = self.equality()?;
+        match (self.peek(), &*expr) {
+            (Some(Token::Equal), Expr::Literal(Token::Identifier(id))) => {
+                self.advance();
+                //TODO avoid this clone
+                Ok(Box::new(Expr::Assign(id.clone(), self.assignment()?)))
+            }
+            (Some(Token::Assign), _) => Err(ParserError::Generic(
+                "expecting identifier on left side of `=`",
+            )),
+            _ => Ok(expr),
+        }
     }
 
     // comparison ( ( "!=" | "==" ) comparison )*
