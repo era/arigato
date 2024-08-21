@@ -92,6 +92,7 @@ impl Interpreter {
             Expr::Unary(t, e) => self.unary_expr(t, *e),
             Expr::Binary(l, t, r) => self.binary(*l, *r, t),
             Expr::EOF => Ok(Type::Nil),
+            Expr::Assign(id, value) => self.assign_expr(id, *value),
             _ => unreachable!(),
         }
     }
@@ -123,10 +124,11 @@ impl Interpreter {
         todo!()
     }
 
-    fn assign_expr(&mut self, id: String, value: Expr) -> Result<(), Error> {
+    fn assign_expr(&mut self, id: String, value: Expr) -> Result<Type, Error> {
         if self.contains_key(&id) {
             let value = self.evaluate(value)?;
-            self.put_value(id, value)
+            self.put_value(id, value.clone());
+            Ok(value)
         } else {
             Err(Error::NoSuchVariable)
         }
