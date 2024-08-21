@@ -22,12 +22,14 @@ pub enum Error {
 
 struct Environment {
     environment: HashMap<String, Option<Type>>,
+    enclosing: Option<Box<Environment>>,
 }
 
 impl Environment {
     fn new() -> Self {
         Self {
             environment: HashMap::new(),
+            enclosing: None,
         }
     }
 
@@ -35,9 +37,29 @@ impl Environment {
         self.environment.insert(identifier, val);
     }
 
-    fn get(&mut self, identifier: &str) -> Result<Option<Type>, Error> {
+    fn assign(&mut self, identifier: String, val: Option<Type>) -> Result<(), Error> {
+        match self.environment.get(&identifier) {
+            None => {
+                if let Some(e) = &mut self.enclosing {
+                    e.assign(identifier, val)?;
+                }
+            }
+            Some(_) => {
+                self.define(identifier, val);
+            }
+        }
+        Err(Error::NoSuchVariable)
+    }
+
+    fn get(&self, identifier: &str) -> Result<Option<Type>, Error> {
         match self.environment.get(identifier) {
-            None => Err(Error::NoSuchVariable),
+            None => {
+                if let Some(e) = &self.enclosing {
+                    e.get(identifier)
+                } else {
+                    Err(Error::NoSuchVariable)
+                }
+            }
             Some(t) => Ok(t.clone()),
         }
     }
@@ -116,22 +138,14 @@ impl Interpreter {
         }
     }
 
-    fn contains_key(&self, id: &str) -> bool {
-        todo!()
-    }
-
     fn put_value(&mut self, id: String, value: Type) -> Result<(), Error> {
-        todo!()
+        self.environment.assign(id, Some(value))
     }
 
     fn assign_expr(&mut self, id: String, value: Expr) -> Result<Type, Error> {
-        if self.contains_key(&id) {
-            let value = self.evaluate(value)?;
-            self.put_value(id, value.clone());
-            Ok(value)
-        } else {
-            Err(Error::NoSuchVariable)
-        }
+        let value = self.evaluate(value)?;
+        self.put_value(id, value.clone())?;
+        Ok(value)
     }
 
     fn grouping_expr(&mut self, g: Expr) -> Result<Type, Error> {
