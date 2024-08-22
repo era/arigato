@@ -71,7 +71,7 @@ impl Parser {
             match t {
                 Token::RightBrace => {
                     self.advance(); // consumes }
-                    return Ok(Statement::Block(block_stmts))
+                    return Ok(Statement::Block(block_stmts));
                 }
 
                 _ => block_stmts.push(self.declaration()?),
