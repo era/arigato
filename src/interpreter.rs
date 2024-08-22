@@ -1,4 +1,8 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::mem;
+use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::ast::Expr;
 use crate::ast::Statement;
@@ -19,9 +23,10 @@ pub enum Error {
     VariableNotInitialized,
 }
 
+#[derive(Clone)]
 struct Environment {
     environment: HashMap<String, Option<Type>>,
-    enclosing: Option<Box<Environment>>,
+    enclosing: Option<Rc<RefCell<Environment>>>,
 }
 
 impl Environment {
@@ -32,6 +37,13 @@ impl Environment {
         }
     }
 
+    fn new_from(env: Rc<RefCell<Environment>>) -> Self {
+        Self {
+            environment: HashMap::new(),
+            enclosing: Some(env),
+        }
+    }
+
     fn define(&mut self, identifier: String, val: Option<Type>) {
         self.environment.insert(identifier, val);
     }
@@ -39,8 +51,8 @@ impl Environment {
     fn assign(&mut self, identifier: String, val: Option<Type>) -> Result<(), Error> {
         match self.environment.get(&identifier) {
             None => {
-                if let Some(e) = &mut self.enclosing {
-                    e.assign(identifier, val)?;
+                if let Some(ref mut e) = self.enclosing {
+                    e.borrow_mut().assign(identifier, val)?;
                 }
             }
             Some(_) => {
@@ -54,7 +66,7 @@ impl Environment {
         match self.environment.get(identifier) {
             None => {
                 if let Some(e) = &self.enclosing {
-                    e.get(identifier)
+                    e.borrow_mut().get(identifier)
                 } else {
                     Err(Error::NoSuchVariable)
                 }
@@ -65,14 +77,14 @@ impl Environment {
 }
 
 pub struct Interpreter {
-    environment: Environment,
+    environment: Rc<RefCell<Environment>>,
 }
 
 // a tree-walking interpreter implemented by using the visitor pattern.
 impl Interpreter {
     pub fn new() -> Self {
         Self {
-            environment: Environment::new(),
+            environment: Rc::new(RefCell::new(Environment::new())),
         }
     }
 
@@ -83,14 +95,14 @@ impl Interpreter {
         Ok(())
     }
 
-    fn evaluate_stmt(&mut self, stmt: Statement) -> Result<Type, Error> {
+    fn evaluate_stmt(&mut self, stmt: Statement) -> Result<(), Error> {
         match stmt {
-            Statement::VarDeclaration(id, value) => {
-                self.var_declaration(id, value)?;
-                Ok(Type::Nil)
+            Statement::VarDeclaration(id, value) => self.var_declaration(id, value),
+            Statement::Block(block) => self.block_stmt(block),
+            Statement::Expr(expr) => {
+                self.evaluate(expr)?;
+                Ok(())
             }
-            Statement::Block(block) => todo!(),
-            Statement::Expr(expr) => self.evaluate(expr),
         }
     }
 
@@ -99,8 +111,8 @@ impl Interpreter {
 
         match value {
             Some(Err(e)) => return Err(e),
-            Some(Ok(v)) => self.environment.define(identifier, Some(v)),
-            None => self.environment.define(identifier, None),
+            Some(Ok(v)) => self.environment.borrow_mut().define(identifier, Some(v)),
+            None => self.environment.borrow_mut().define(identifier, None),
         };
         Ok(())
     }
@@ -116,6 +128,26 @@ impl Interpreter {
         }
     }
 
+    fn block_stmt(&mut self, statements: Vec<Statement>) -> Result<(), Error> {
+        let env = Rc::new(RefCell::new(Environment::new_from(
+            self.environment.clone(),
+        )));
+        self.execute_block(statements, env)
+    }
+
+    fn execute_block(
+        &mut self,
+        stmts: Vec<Statement>,
+        mut env: Rc<RefCell<Environment>>,
+    ) -> Result<(), Error> {
+        mem::swap(&mut env, &mut self.environment);
+        for s in stmts {
+            self.evaluate_stmt(s)?;
+        }
+        mem::swap(&mut env, &mut self.environment);
+        Ok(())
+    }
+
     fn literal_expr(&mut self, token: Token) -> Result<Type, Error> {
         match token {
             Token::Number(n) => {
@@ -125,7 +157,7 @@ impl Interpreter {
             }
             Token::Text(t) => Ok(Type::Text(t)),
             Token::Identifier(id) => {
-                if let Some(t) = self.environment.get(&id)? {
+                if let Some(t) = self.environment.borrow_mut().get(&id)? {
                     Ok(t)
                 } else {
                     Err(Error::VariableNotInitialized)
@@ -136,7 +168,7 @@ impl Interpreter {
     }
 
     fn put_value(&mut self, id: String, value: Type) -> Result<(), Error> {
-        self.environment.assign(id, Some(value))
+        self.environment.borrow_mut().assign(id, Some(value))
     }
 
     fn assign_expr(&mut self, id: String, value: Expr) -> Result<Type, Error> {
