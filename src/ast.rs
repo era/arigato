@@ -69,11 +69,14 @@ impl Parser {
         let mut block_stmts = vec![];
         while let Some(t) = self.peek() {
             match t {
-                Token::RightBrace => return Ok(Statement::Block(block_stmts)),
+                Token::RightBrace => {
+                    self.advance(); // consumes }
+                    return Ok(Statement::Block(block_stmts))
+                }
+
                 _ => block_stmts.push(self.declaration()?),
             }
         }
-        self.advance(); // consumes }
         Err(ParserError::Generic("expecting }"))
     }
 
