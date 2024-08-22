@@ -21,11 +21,7 @@ pub enum Expr {
 
 pub enum Statement {
     VarDeclaration(String, Option<Box<Expr>>),
-}
-
-pub enum G {
-    // TODO remove this in favour of Statement enum directly
-    Statement(Statement),
+    Block(Vec<Statement>),
     Expr(Expr),
 }
 
@@ -60,17 +56,49 @@ impl Parser {
         self.tokens.next()
     }
 
-    pub fn parse(&mut self) -> Result<Vec<G>> {
+    pub fn parse(&mut self) -> Result<Vec<Statement>> {
         let mut g = vec![];
-        while let Some(token) = self.peek() {
-            // g.push(G::Expr(*self.expression()?));
-            match token {
-                Token::Var => g.push(G::Statement(self.var_statement()?)),
-                Token::Print => g.push(G::Statement(self.print_statement()?)),
-                _ => g.push(G::Expr(*self.expression()?)), // TODO remove this in the near future
-            }
+        while let Some(_) = self.peek() {
+            g.push(self.declaration()?);
         }
         Ok(g)
+    }
+
+    fn block(&mut self) -> Result<Statement> {
+        self.advance(); // consumes {
+        let mut block_stmts = vec![];
+        while let Some(t) = self.peek() {
+            match t {
+                Token::RightBrace => return Ok(Statement::Block(block_stmts)),
+                _ => block_stmts.push(self.declaration()?),
+            }
+        }
+        self.advance(); // consumes }
+        Err(ParserError::Generic("expecting }"))
+    }
+
+    fn declaration(&mut self) -> Result<Statement> {
+        match self.peek() {
+            Some(Token::Var) => self.var_statement(),
+            Some(Token::LeftBrace) => self.block(),
+            Some(_) => self.statement(),
+            _ => Err(ParserError::Generic("Not expecting end of input")),
+        }
+    }
+
+    fn statement(&mut self) -> Result<Statement> {
+        match self.peek() {
+            Some(Token::Print) => return self.print_statement(),
+            _ => return self.expression_statement(),
+        }
+    }
+
+    fn expression_statement(&mut self) -> Result<Statement> {
+        let expr = self.expression()?;
+        match self.advance() {
+            Some(Token::SemiColon) => Ok(Statement::Expr(*expr)),
+            _ => Err(ParserError::Generic("missing ;")),
+        }
     }
 
     fn var_statement(&mut self) -> Result<Statement> {

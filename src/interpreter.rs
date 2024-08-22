@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use crate::ast::Expr;
 use crate::ast::Statement;
-use crate::ast::G;
 use crate::lang::Token;
 
 #[derive(PartialEq, Clone)]
@@ -77,22 +76,21 @@ impl Interpreter {
         }
     }
 
-    pub fn interprete(&mut self, program: Vec<G>) -> Result<(), Error> {
+    pub fn interprete(&mut self, program: Vec<Statement>) -> Result<(), Error> {
         for s in program {
-            match s {
-                G::Expr(expr) => {
-                    self.evaluate(expr)?;
-                    ()
-                }
-                G::Statement(stmt) => self.evaluate_stmt(stmt)?,
-            };
+            self.evaluate_stmt(s)?;
         }
         Ok(())
     }
 
-    fn evaluate_stmt(&mut self, stmt: Statement) -> Result<(), Error> {
+    fn evaluate_stmt(&mut self, stmt: Statement) -> Result<Type, Error> {
         match stmt {
-            Statement::VarDeclaration(id, value) => self.var_declaration(id, value),
+            Statement::VarDeclaration(id, value) => {
+                self.var_declaration(id, value)?;
+                Ok(Type::Nil)
+            }
+            Statement::Block(block) => todo!(),
+            Statement::Expr(expr) => self.evaluate(expr),
         }
     }
 
@@ -115,7 +113,6 @@ impl Interpreter {
             Expr::Binary(l, t, r) => self.binary(*l, *r, t),
             Expr::EOF => Ok(Type::Nil),
             Expr::Assign(id, value) => self.assign_expr(id, *value),
-            _ => unreachable!(),
         }
     }
 
