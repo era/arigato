@@ -82,8 +82,12 @@ impl Parser {
 
     fn declaration(&mut self) -> Result<Statement> {
         match self.peek() {
-            Some(Token::Var) => self.var_statement(),
-            Some(Token::LeftBrace) => self.block(),
+            Some(&Token::Var) => self.var_statement(),
+            Some(&Token::LeftBrace) => self.block(),
+            Some(&Token::Eof) => {
+                self.advance();
+                Ok(Statement::Expr(Expr::EOF))
+            }
             Some(_) => self.statement(),
             _ => Err(ParserError::Generic("Not expecting end of input")),
         }
@@ -91,7 +95,7 @@ impl Parser {
 
     fn statement(&mut self) -> Result<Statement> {
         match self.peek() {
-            Some(Token::Print) => return self.print_statement(),
+            Some(&Token::Print) => return self.print_statement(),
             _ => return self.expression_statement(),
         }
     }
@@ -112,7 +116,7 @@ impl Parser {
         };
 
         let value = match self.peek() {
-            Some(Token::Assign) => {
+            Some(&Token::Assign) => {
                 self.advance();
                 Some(self.expression()?)
             }
@@ -138,12 +142,12 @@ impl Parser {
     fn assignment(&mut self) -> Result<Box<Expr>> {
         let expr = self.equality()?;
         match (self.peek(), &*expr) {
-            (Some(Token::Equal), Expr::Literal(Token::Identifier(id))) => {
+            (Some(&Token::Equal), &Expr::Literal(Token::Identifier(ref id))) => {
                 self.advance();
                 //TODO avoid this clone
                 Ok(Box::new(Expr::Assign(id.clone(), self.assignment()?)))
             }
-            (Some(Token::Assign), _) => Err(ParserError::Generic(
+            (Some(&Token::Assign), _) => Err(ParserError::Generic(
                 "expecting identifier on left side of `=`",
             )),
             _ => Ok(expr),
@@ -179,8 +183,8 @@ impl Parser {
             match self.peek() {
                 Some(&Token::Greater)
                 | Some(&Token::GreaterEqual)
-                | Some(Token::Less)
-                | Some(Token::LessEqual) => {
+                | Some(&Token::Less)
+                | Some(&Token::LessEqual) => {
                     let op = match self.advance() {
                         Some(op) => op,
                         None => return Ok(Box::new(Expr::EOF)),
@@ -267,7 +271,7 @@ impl Parser {
                     Err(ParserError::Generic("expecting ')'"))
                 }
             }
-            Some(Token::Eof) => {
+            Some(&Token::Eof) => {
                 self.advance();
                 Ok(Box::new(Expr::EOF))
             }

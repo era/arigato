@@ -326,4 +326,18 @@ mod test {
             scanner.scan()
         );
     }
+
+    #[test]
+    pub fn scan_a_var_declaration() {
+        let mut scanner = Scanner::new("var a;".chars());
+        assert_eq!(
+            Ok(vec![
+                Token::Var,
+                Token::Identifier("a".to_string()),
+                Token::SemiColon,
+                Token::Eof
+            ]),
+            scanner.scan()
+        );
+    }
 }

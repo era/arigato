@@ -254,3 +254,32 @@ impl Interpreter {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::{ast::Parser, scanner::Scanner};
+
+    #[test]
+    pub fn test_var_declaration() {
+        let tokens = Scanner::new("var a;".chars()).scan().unwrap();
+        let ast = Parser::new(tokens).parse().unwrap();
+        Interpreter::new().interprete(ast).unwrap();
+    }
+
+    #[test]
+    pub fn test_var_assign() {
+        let tokens = Scanner::new("var a = 1;".chars()).scan().unwrap();
+        let ast = Parser::new(tokens).parse().unwrap();
+        Interpreter::new().interprete(ast).unwrap();
+    }
+
+    #[test]
+    pub fn test_blocks() {
+        let tokens = Scanner::new("var a = 1; {var b = a;}".chars())
+            .scan()
+            .unwrap();
+        let ast = Parser::new(tokens).parse().unwrap();
+        Interpreter::new().interprete(ast).unwrap();
+    }
+}
