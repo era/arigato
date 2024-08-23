@@ -22,6 +22,7 @@ pub enum Expr {
 pub enum Statement {
     VarDeclaration(String, Option<Box<Expr>>),
     Block(Vec<Statement>),
+    IfStatement(Expr, Box<Statement>, Option<Box<Statement>>),
     Expr(Expr),
 }
 
@@ -95,9 +96,25 @@ impl Parser {
 
     fn statement(&mut self) -> Result<Statement> {
         match self.peek() {
+            Some(&Token::If) => return self.if_statement(),
             Some(&Token::Print) => return self.print_statement(),
             _ => return self.expression_statement(),
         }
+    }
+
+    fn if_statement(&mut self) -> Result<Statement> {
+        self.advance(); // consume if token
+        let condition = self.expression()?;
+        let if_true = Box::new(self.statement()?);
+        let if_false = match self.peek() {
+            Some(&Token::Else) => {
+                self.advance(); // consume else token
+                Some(Box::new(self.statement()?))
+            }
+            _ => None,
+        };
+
+        Ok(Statement::IfStatement(*condition, if_true, if_false))
     }
 
     fn expression_statement(&mut self) -> Result<Statement> {

@@ -97,6 +97,9 @@ impl Interpreter {
 
     fn evaluate_stmt(&mut self, stmt: Statement) -> Result<(), Error> {
         match stmt {
+            Statement::IfStatement(condition, if_true, if_false) => {
+                self.evaluate_if(condition, if_true, if_false)
+            }
             Statement::VarDeclaration(id, value) => self.var_declaration(id, value),
             Statement::Block(block) => self.block_stmt(block),
             Statement::Expr(expr) => {
@@ -179,6 +182,21 @@ impl Interpreter {
 
     fn grouping_expr(&mut self, g: Expr) -> Result<Type, Error> {
         return self.evaluate(g);
+    }
+
+    fn evaluate_if(
+        &mut self,
+        condition: Expr,
+        if_true: Box<Statement>,
+        if_false: Option<Box<Statement>>,
+    ) -> Result<(), Error> {
+        match (self.evaluate(condition)?, if_false) {
+            (Type::Bool(true), _) => self.evaluate_stmt(*if_true),
+            (Type::Bool(false), Some(if_false)) => self.evaluate_stmt(*if_false),
+            (_, _) => Err(Error::UnexpectedExpr(
+                "expecting condition to evaluate to boolean",
+            )),
+        }
     }
 
     fn unary_expr(&mut self, token: Token, expr: Expr) -> Result<Type, Error> {
