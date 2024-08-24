@@ -128,6 +128,26 @@ impl Interpreter {
             Expr::Binary(l, t, r) => self.binary(*l, *r, t),
             Expr::EOF => Ok(Type::Nil),
             Expr::Assign(id, value) => self.assign_expr(id, *value),
+            Expr::Or(left, right) => self.logical_or(*left, *right),
+            Expr::And(left, right) => self.logical_and(*left, *right),
+        }
+    }
+
+    fn logical_and(&mut self, left: Expr, right: Expr) -> Result<Type, Error> {
+        let left = self.evaluate(left)?;
+        if left == Type::Bool(false) {
+            Ok(Type::Bool(false))
+        } else {
+            self.evaluate(right)
+        }
+    }
+
+    fn logical_or(&mut self, left: Expr, right: Expr) -> Result<Type, Error> {
+        let left = self.evaluate(left)?;
+        if left == Type::Bool(true) {
+            Ok(Type::Bool(true))
+        } else {
+            self.evaluate(right)
         }
     }
 

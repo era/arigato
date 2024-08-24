@@ -16,6 +16,8 @@ pub enum Expr {
     Binary(Box<Expr>, Token, Box<Expr>),
     Literal(Token),
     Grouping(Box<Expr>),
+    Or(Box<Expr>, Box<Expr>),
+    And(Box<Expr>, Box<Expr>),
     EOF,
 }
 
@@ -157,7 +159,7 @@ impl Parser {
     }
 
     fn assignment(&mut self) -> Result<Box<Expr>> {
-        let expr = self.equality()?;
+        let expr = self.or_expr()?;
         match (self.peek(), &*expr) {
             (Some(&Token::Equal), &Expr::Literal(Token::Identifier(ref id))) => {
                 self.advance();
@@ -169,6 +171,26 @@ impl Parser {
             )),
             _ => Ok(expr),
         }
+    }
+
+    fn or_expr(&mut self) -> Result<Box<Expr>> {
+        let mut expr = self.and_expr()?;
+        while let Some(&Token::Or) = self.peek() {
+            self.advance();
+            expr = Box::new(Expr::Or(expr, self.and_expr()?));
+        }
+
+        Ok(expr)
+    }
+
+    fn and_expr(&mut self) -> Result<Box<Expr>> {
+        let mut expr = self.equality()?;
+        while let Some(&Token::And) = self.peek() {
+            self.advance();
+            expr = Box::new(Expr::Or(expr, self.equality()?));
+        }
+
+        Ok(expr)
     }
 
     // comparison ( ( "!=" | "==" ) comparison )*
