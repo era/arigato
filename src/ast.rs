@@ -28,6 +28,10 @@ pub enum Statement {
     Expr(Expr),
 }
 
+pub enum UserError {
+    Err(ParserError, String),
+}
+
 pub type Result<I> = std::result::Result<I, ParserError>;
 
 ///
@@ -59,10 +63,17 @@ impl Parser {
         self.tokens.next()
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Statement>> {
+    pub fn parse(&mut self) -> std::result::Result<Vec<Statement>, Vec<ParserError>> {
         let mut g = vec![];
+        let mut errors = vec![];
         while let Some(_) = self.peek() {
-            g.push(self.declaration()?);
+            match self.declaration() {
+                Err(e) => errors.push(UserError::Err(
+                    e,
+                    format!("error on {} position", self.curr),
+                )),
+                Ok(t) => g.push(t),
+            }
         }
         Ok(g)
     }
