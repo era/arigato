@@ -68,10 +68,13 @@ impl Parser {
         let mut errors = vec![];
         while let Some(_) = self.peek() {
             match self.declaration() {
-                Err(e) => errors.push(UserError::Err(
-                    e,
-                    format!("error on {} position", self.curr),
-                )),
+                Err(e) => {
+                    self.synchronize();
+                    errors.push(UserError::Err(
+                        e,
+                        format!("error on {} position", self.curr),
+                    ));
+                }
                 Ok(t) => g.push(t),
             }
         }
