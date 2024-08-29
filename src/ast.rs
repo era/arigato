@@ -9,7 +9,7 @@ pub enum ParserError {
     Generic(&'static str),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr {
     Assign(String, Box<Expr>),
     Unary(Token, Box<Expr>),
@@ -21,10 +21,13 @@ pub enum Expr {
     EOF,
 }
 
+#[derive(Debug, Clone)]
 pub enum Statement {
+    //TODO stop using box in some places and not others
     VarDeclaration(String, Option<Box<Expr>>),
     Block(Vec<Statement>),
     IfStatement(Expr, Box<Statement>, Option<Box<Statement>>),
+    While(Expr, Box<Statement>),
     Expr(Expr),
 }
 
@@ -113,9 +116,28 @@ impl Parser {
     fn statement(&mut self) -> Result<Statement> {
         match self.peek() {
             Some(&Token::If) => return self.if_statement(),
+            Some(&Token::While) => return self.while_statement(),
             Some(&Token::Print) => return self.print_statement(),
             _ => return self.expression_statement(),
         }
+    }
+
+    fn while_statement(&mut self) -> Result<Statement> {
+        self.advance(); // consume while token
+        match self.advance() {
+            Some(Token::LeftParen) => (),
+            _ => return Err(ParserError::Generic("expecting (")),
+        }
+        let expr = self.expression()?;
+
+        match self.advance() {
+            Some(Token::RightParen) => (),
+            _ => return Err(ParserError::Generic("expecting )")),
+        }
+
+        let block = self.statement()?;
+
+        Ok(Statement::While(*expr, Box::new(block)))
     }
 
     fn if_statement(&mut self) -> Result<Statement> {

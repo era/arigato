@@ -100,11 +100,29 @@ impl Interpreter {
             Statement::IfStatement(condition, if_true, if_false) => {
                 self.evaluate_if(condition, if_true, if_false)
             }
+            Statement::While(condition, block) => self.while_eval(condition, *block),
             Statement::VarDeclaration(id, value) => self.var_declaration(id, value),
             Statement::Block(block) => self.block_stmt(block),
             Statement::Expr(expr) => {
                 self.evaluate(expr)?;
                 Ok(())
+            }
+        }
+    }
+
+    fn while_eval(&mut self, condition: Expr, block: Statement) -> Result<(), Error> {
+        loop {
+            match self.evaluate(condition.clone())? {
+                Type::Bool(true) => {
+                    self.evaluate_stmt(block.clone())?;
+                    ()
+                }
+                Type::Bool(false) => return Ok(()),
+                _ => {
+                    return Err(Error::UnexpectedExpr(
+                        "expecting a boolean value for while condition",
+                    ))
+                }
             }
         }
     }
