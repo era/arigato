@@ -171,7 +171,14 @@ impl Parser {
             Expr::Literal(Token::True)
         };
 
-        Ok(Statement::While(condition, Box::new(body)))
+        if let Some(initializer) = intializer {
+            Ok(Statement::Block(vec![
+                initializer,
+                Statement::While(condition, Box::new(body)),
+            ]))
+        } else {
+            Ok(Statement::While(condition, Box::new(body)))
+        }
     }
 
     fn while_statement(&mut self) -> Result<Statement> {
