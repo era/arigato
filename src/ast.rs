@@ -117,23 +117,69 @@ impl Parser {
         match self.peek() {
             Some(&Token::If) => return self.if_statement(),
             Some(&Token::While) => return self.while_statement(),
+            Some(&Token::For) => return self.for_statement(),
             Some(&Token::Print) => return self.print_statement(),
             _ => return self.expression_statement(),
         }
     }
 
+    fn advance_or_error(&mut self, token: Option<Token>, msg: &'static str) -> Result<()> {
+        if self.advance() == token {
+            Ok(())
+        } else {
+            Err(ParserError::Generic(msg))
+        }
+    }
+
+    fn for_statement(&mut self) -> Result<Statement> {
+        self.advance(); // consume for token
+        self.advance_or_error(Some(Token::LeftParen), "expecting (")?;
+
+        let intializer = match self.peek() {
+            Some(&Token::SemiColon) => {
+                self.advance();
+                None
+            }
+            Some(&Token::Var) => Some(self.var_statement()?),
+            _ => Some(self.expression_statement()?),
+        };
+
+        let condition = match self.peek() {
+            Some(Token::SemiColon) => None,
+            Some(_) => Some(*self.expression()?),
+            _ => return Err(ParserError::Generic("not expecting the end of the file")),
+        };
+
+        self.advance_or_error(Some(Token::SemiColon), "expecting';")?;
+
+        let increment = if let Some(&Token::RightParen) = self.peek() {
+            None
+        } else {
+            Some(*self.expression()?)
+        };
+
+        self.advance_or_error(Some(Token::RightParen), "expecting )")?;
+        let mut body = self.statement()?;
+
+        if let Some(increment) = increment {
+            body = Statement::Block(vec![body, Statement::Expr(increment)]);
+        }
+
+        let condition = if let Some(condition) = condition {
+            condition
+        } else {
+            Expr::Literal(Token::True)
+        };
+
+        Ok(Statement::While(condition, Box::new(body)))
+    }
+
     fn while_statement(&mut self) -> Result<Statement> {
         self.advance(); // consume while token
-        match self.advance() {
-            Some(Token::LeftParen) => (),
-            _ => return Err(ParserError::Generic("expecting (")),
-        }
+        self.advance_or_error(Some(Token::LeftParen), "expecting (")?;
         let expr = self.expression()?;
 
-        match self.advance() {
-            Some(Token::RightParen) => (),
-            _ => return Err(ParserError::Generic("expecting )")),
-        }
+        self.advance_or_error(Some(Token::RightParen), "expecting )")?;
 
         let block = self.statement()?;
 
