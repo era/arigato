@@ -9,7 +9,7 @@ pub enum ParserError {
     Generic(&'static str),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Assign(String, Box<Expr>),
     Unary(Token, Box<Expr>),
@@ -18,10 +18,11 @@ pub enum Expr {
     Grouping(Box<Expr>),
     Or(Box<Expr>, Box<Expr>),
     And(Box<Expr>, Box<Expr>),
+    Call(Box<Expr>, Vec<Expr>),
     EOF,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
     //TODO stop using box in some places and not others
     VarDeclaration(String, Option<Box<Expr>>),
@@ -369,8 +370,36 @@ impl Parser {
                 let unary = self.unary()?;
                 Ok(Box::new(Expr::Unary(op, unary)))
             }
-            Some(_) => self.primary(),
+            Some(_) => self.call(),
             None => Ok(Box::new(Expr::EOF)),
+        }
+    }
+
+    fn call(&mut self) -> Result<Box<Expr>> {
+        let mut expr = self.primary()?;
+        while let Some(&Token::LeftParen) = self.peek() {
+            self.advance();
+            expr = self.finish_call(expr)?;
+        }
+
+        Ok(expr)
+    }
+
+    fn finish_call(&mut self, callee: Box<Expr>) -> Result<Box<Expr>> {
+        let mut arguments = vec![];
+        match self.peek() {
+            Some(&Token::RightParen) => {
+                self.advance();
+                return Ok(Box::new(Expr::Call(callee, arguments)));
+            }
+            _ => loop {
+                let arg = self.expression()?;
+                arguments.push(*arg);
+                if Some(&Token::Comma) != self.peek() {
+                    self.advance_or_error(Some(Token::Comma), "expecting ) after list of args");
+                    return Ok(Box::new(Expr::Call(callee, arguments)));
+                }
+            },
         }
     }
 

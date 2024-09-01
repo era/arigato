@@ -2,7 +2,6 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::mem;
 use std::rc::Rc;
-use std::sync::Arc;
 
 use crate::ast::Expr;
 use crate::ast::Statement;
@@ -13,6 +12,7 @@ pub enum Type {
     Number(f64),
     Text(String),
     Bool(bool),
+    Callable(Vec<Statement>),
     Nil,
 }
 
@@ -140,6 +140,10 @@ impl Interpreter {
 
     fn evaluate(&mut self, expr: Expr) -> Result<Type, Error> {
         match expr {
+            // TODO: We need to execute callee until we get an identifier
+            // with that identifier we look at Env to see the Statement::Block
+            // we execute the Block
+            Expr::Call(callee, arguments) => todo!(),
             Expr::Literal(token) => self.literal_expr(token),
             Expr::Grouping(expr) => self.grouping_expr(*expr),
             Expr::Unary(t, e) => self.unary_expr(t, *e),
