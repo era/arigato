@@ -12,13 +12,14 @@ pub enum Type {
     Number(f64),
     Text(String),
     Bool(bool),
-    Callable(Vec<Statement>),
+    Callable(Vec<String>, Vec<Statement>),
     Nil,
 }
 
 #[derive(Debug)]
 pub enum Error {
     UnexpectedExpr(&'static str),
+    WrongNumberOfArgs(&'static str),
     NoSuchVariable,
     VariableNotInitialized,
 }
@@ -95,18 +96,25 @@ impl Interpreter {
         Ok(())
     }
 
-    fn evaluate_stmt(&mut self, stmt: Statement) -> Result<(), Error> {
+    fn evaluate_stmt(&mut self, stmt: Statement) -> Result<Option<Type>, Error> {
         match stmt {
             Statement::IfStatement(condition, if_true, if_false) => {
-                self.evaluate_if(condition, if_true, if_false)
+                self.evaluate_if(condition, if_true, if_false)?;
+                Ok(None)
             }
-            Statement::While(condition, block) => self.while_eval(condition, *block),
-            Statement::VarDeclaration(id, value) => self.var_declaration(id, value),
-            Statement::Block(block) => self.block_stmt(block),
-            Statement::Expr(expr) => {
-                self.evaluate(expr)?;
-                Ok(())
+            Statement::While(condition, block) => {
+                self.while_eval(condition, *block)?;
+                Ok(None)
             }
+            Statement::VarDeclaration(id, value) => {
+                self.var_declaration(id, value);
+                Ok(None)
+            }
+            Statement::Block(block) => {
+                self.block_stmt(block);
+                Ok(None)
+            }
+            Statement::Expr(expr) => Ok(Some(self.evaluate(expr)?)),
         }
     }
 
@@ -140,10 +148,7 @@ impl Interpreter {
 
     fn evaluate(&mut self, expr: Expr) -> Result<Type, Error> {
         match expr {
-            // TODO: We need to execute callee until we get an identifier
-            // with that identifier we look at Env to see the Statement::Block
-            // we execute the Block
-            Expr::Call(callee, arguments) => todo!(),
+            Expr::Call(callee, arguments) => self.call_function(*callee, arguments),
             Expr::Literal(token) => self.literal_expr(token),
             Expr::Grouping(expr) => self.grouping_expr(*expr),
             Expr::Unary(t, e) => self.unary_expr(t, *e),
@@ -152,6 +157,37 @@ impl Interpreter {
             Expr::Assign(id, value) => self.assign_expr(id, *value),
             Expr::Or(left, right) => self.logical_or(*left, *right),
             Expr::And(left, right) => self.logical_and(*left, *right),
+        }
+    }
+
+    fn call_function(&mut self, callee: Expr, arguments: Vec<Expr>) -> Result<Type, Error> {
+        match self.evaluate(callee)? {
+            Type::Callable(args, stmts) => {
+                if args.len() != arguments.len() {
+                    return Err(Error::WrongNumberOfArgs(
+                        "arguments supplied did not match function signature",
+                    ));
+                }
+
+                let mut env = Rc::new(RefCell::new(Environment::new_from(
+                    self.environment.clone(),
+                )));
+
+                for (i, arg) in args.iter().enumerate() {
+                    let val = self.evaluate(arguments.get(i).unwrap().clone())?;
+                    env.borrow_mut().define(arg.to_owned(), Some(val));
+                }
+
+                mem::swap(&mut env, &mut self.environment);
+                let mut last_statement = None;
+                for s in stmts {
+                    last_statement = self.evaluate_stmt(s)?;
+                }
+                mem::swap(&mut env, &mut self.environment);
+
+                Ok(last_statement.or_else(|| Some(Type::Nil)).unwrap())
+            }
+            _ => Err(Error::UnexpectedExpr("type is not callable")),
         }
     }
 
@@ -233,8 +269,14 @@ impl Interpreter {
         if_false: Option<Box<Statement>>,
     ) -> Result<(), Error> {
         match (self.evaluate(condition)?, if_false) {
-            (Type::Bool(true), _) => self.evaluate_stmt(*if_true),
-            (Type::Bool(false), Some(if_false)) => self.evaluate_stmt(*if_false),
+            (Type::Bool(true), _) => {
+                self.evaluate_stmt(*if_true)?;
+                Ok(())
+            }
+            (Type::Bool(false), Some(if_false)) => {
+                self.evaluate_stmt(*if_false)?;
+                Ok(())
+            }
             (_, _) => Err(Error::UnexpectedExpr(
                 "expecting condition to evaluate to boolean",
             )),
