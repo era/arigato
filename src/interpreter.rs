@@ -13,6 +13,9 @@ pub enum Type {
     Text(String),
     Bool(bool),
     Callable(Vec<String>, Vec<Statement>),
+    //TODO if we cannot find a Callable with identifier in env,
+    // check if it's in a list of native function, if so, run it
+    NativeFunction(Vec<String>),
     Nil,
 }
 
