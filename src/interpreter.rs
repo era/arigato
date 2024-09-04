@@ -8,6 +8,11 @@ use crate::ast::Statement;
 use crate::lang::Token;
 
 #[derive(PartialEq, Clone)]
+pub enum NativeFunction {
+    Clock,
+}
+
+#[derive(PartialEq, Clone)]
 pub enum Type {
     Number(f64),
     Text(String),
@@ -15,7 +20,7 @@ pub enum Type {
     Callable(Vec<String>, Vec<Statement>),
     //TODO if we cannot find a Callable with identifier in env,
     // check if it's in a list of native function, if so, run it
-    NativeFunction(Vec<String>),
+    NativeFunction(NativeFunction, Vec<String>),
     Nil,
 }
 
@@ -24,6 +29,7 @@ pub enum Error {
     UnexpectedExpr(&'static str),
     WrongNumberOfArgs(&'static str),
     NoSuchVariable,
+    NoSuchNativeFunction,
     VariableNotInitialized,
 }
 
@@ -31,6 +37,15 @@ pub enum Error {
 struct Environment {
     environment: HashMap<String, Option<Type>>,
     enclosing: Option<Rc<RefCell<Environment>>>,
+}
+
+impl NativeFunction {
+    fn call(&self, args: Vec<Type>) -> Result<Type, Error> {
+        match &self {
+            NativeFunction::Clock => todo!(),
+            _ => Err(Error::NoSuchNativeFunction),
+        }
+    }
 }
 
 impl Environment {
@@ -87,9 +102,13 @@ pub struct Interpreter {
 // a tree-walking interpreter implemented by using the visitor pattern.
 impl Interpreter {
     pub fn new() -> Self {
-        Self {
-            environment: Rc::new(RefCell::new(Environment::new())),
-        }
+        let env = Rc::new(RefCell::new(Environment::new()));
+
+        env.borrow_mut().define(
+            "clock".to_owned(),
+            Some(Type::NativeFunction(NativeFunction::Clock, vec![])),
+        );
+        Self { environment: env }
     }
 
     pub fn interprete(&mut self, program: Vec<Statement>) -> Result<(), Error> {
