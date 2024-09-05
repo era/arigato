@@ -9,6 +9,8 @@ pub enum ParserError {
     Generic(&'static str),
 }
 
+//TODO stop using plain strings and use Token instead
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Assign(String, Box<Expr>),
@@ -26,6 +28,7 @@ pub enum Expr {
 pub enum Statement {
     //TODO stop using box in some places and not others
     VarDeclaration(String, Option<Box<Expr>>),
+    FnDeclaration(String, Vec<String>, Vec<Statement>),
     Block(Vec<Statement>),
     IfStatement(Expr, Box<Statement>, Option<Box<Statement>>),
     While(Expr, Box<Statement>),
@@ -109,8 +112,33 @@ impl Parser {
                 self.advance();
                 Ok(Statement::Expr(Expr::EOF))
             }
+            Some(&Token::Fun) => self.function_declaration(),
             Some(_) => self.statement(),
             _ => Err(ParserError::Generic("Not expecting end of input")),
+        }
+    }
+
+    fn function_declaration(&mut self) -> Result<Statement> {
+        self.advance_or_error(Some(Token::Fun), "expecting function delcaration")?;
+        let mut args = vec![];
+        match self.advance() {
+            Some(Token::Identifier(name)) => {
+                self.advance_or_error(Some(Token::LeftParen), "expecting (")?;
+
+                loop {
+                    match self.advance() {
+                        Some(Token::RightBrace) => break,
+                        Some(Token::Identifier(t)) => args.push(t),
+                        _ => return Err(ParserError::Generic("expecting args")),
+                    }
+                }
+                match self.block() {
+                    Ok(Statement::Block(stmts)) => Ok(Statement::FnDeclaration(name, args, stmts)),
+                    e @ Err(_) => e,
+                    _ => Err(ParserError::Generic("expecting block")),
+                }
+            }
+            _ => Err(ParserError::Generic("expecting function name")),
         }
     }
 

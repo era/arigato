@@ -129,15 +129,31 @@ impl Interpreter {
                 Ok(None)
             }
             Statement::VarDeclaration(id, value) => {
-                self.var_declaration(id, value);
+                self.var_declaration(id, value)?;
                 Ok(None)
             }
             Statement::Block(block) => {
-                self.block_stmt(block);
+                self.block_stmt(block)?;
+                Ok(None)
+            }
+            Statement::FnDeclaration(name, args, block) => {
+                self.fun_declaration(name, args, block)?;
                 Ok(None)
             }
             Statement::Expr(expr) => Ok(Some(self.evaluate(expr)?)),
         }
+    }
+
+    fn fun_declaration(
+        &mut self,
+        name: String,
+        args: Vec<String>,
+        block: Vec<Statement>,
+    ) -> Result<(), Error> {
+        self.environment
+            .borrow_mut()
+            .define(name, Some(Type::Callable(args, block)));
+        Ok(())
     }
 
     fn while_eval(&mut self, condition: Expr, block: Statement) -> Result<(), Error> {
