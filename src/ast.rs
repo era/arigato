@@ -32,6 +32,7 @@ pub enum Statement {
     Block(Vec<Statement>),
     IfStatement(Expr, Box<Statement>, Option<Box<Statement>>),
     While(Expr, Box<Statement>),
+    Return(Expr),
     Expr(Expr),
 }
 
@@ -148,7 +149,17 @@ impl Parser {
             Some(&Token::While) => return self.while_statement(),
             Some(&Token::For) => return self.for_statement(),
             Some(&Token::Print) => return self.print_statement(),
+            Some(&Token::Return) => return self.return_statement(),
             _ => return self.expression_statement(),
+        }
+    }
+
+    fn return_statement(&mut self) -> Result<Statement> {
+        self.advance(); // consumes return
+
+        match self.peek() {
+            Some(&Token::SemiColon) => Ok(Statement::Return(Expr::Literal(Token::Nil))),
+            _ => Ok(Statement::Return(*self.expression()?)),
         }
     }
 

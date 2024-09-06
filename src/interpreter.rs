@@ -140,6 +140,7 @@ impl Interpreter {
                 self.fun_declaration(name, args, block)?;
                 Ok(None)
             }
+            Statement::Return(_) => todo!(),
             Statement::Expr(expr) => Ok(Some(self.evaluate(expr)?)),
         }
     }
