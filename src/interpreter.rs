@@ -7,12 +7,12 @@ use crate::ast::Expr;
 use crate::ast::Statement;
 use crate::lang::Token;
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum NativeFunction {
     Clock,
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum Type {
     Number(f64),
     Text(String),
@@ -31,6 +31,8 @@ pub enum Error {
     NoSuchVariable,
     NoSuchNativeFunction,
     VariableNotInitialized,
+    // use to stop executing a function and return the value
+    ReturnValue(Type),
 }
 
 #[derive(Clone)]
@@ -140,9 +142,17 @@ impl Interpreter {
                 self.fun_declaration(name, args, block)?;
                 Ok(None)
             }
-            Statement::Return(_) => todo!(),
+            Statement::Return(exp) => {
+                self.return_statement(exp)?;
+                unreachable!()
+            }
             Statement::Expr(expr) => Ok(Some(self.evaluate(expr)?)),
         }
+    }
+
+    fn return_statement(&mut self, expr: Expr) -> Result<Statement, Error> {
+        let result = self.evaluate(expr)?;
+        Err(Error::ReturnValue(result))
     }
 
     fn fun_declaration(
@@ -220,7 +230,11 @@ impl Interpreter {
                 mem::swap(&mut env, &mut self.environment);
                 let mut last_statement = None;
                 for s in stmts {
-                    last_statement = self.evaluate_stmt(s)?;
+                    last_statement = match self.evaluate_stmt(s) {
+                        Err(Error::ReturnValue(t)) => return Ok(t),
+                        Err(e) => return Err(e),
+                        Ok(t) => t,
+                    };
                 }
                 mem::swap(&mut env, &mut self.environment);
 
