@@ -17,7 +17,7 @@ pub enum Type {
     Number(f64),
     Text(String),
     Bool(bool),
-    Callable(Vec<String>, Vec<Statement>),
+    Callable(Vec<String>, Vec<Statement>, Environment),
     //TODO if we cannot find a Callable with identifier in env,
     // check if it's in a list of native function, if so, run it
     NativeFunction(NativeFunction, Vec<String>),
@@ -35,7 +35,7 @@ pub enum Error {
     ReturnValue(Type),
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 struct Environment {
     environment: HashMap<String, Option<Type>>,
     enclosing: Option<Rc<RefCell<Environment>>>,
@@ -161,9 +161,12 @@ impl Interpreter {
         args: Vec<String>,
         block: Vec<Statement>,
     ) -> Result<(), Error> {
+        let mut closure = Environment::new();
+        closure.environment = self.environment.borrow_mut().environment.clone();
         self.environment
             .borrow_mut()
-            .define(name, Some(Type::Callable(args, block)));
+            .define(name, Some(Type::Callable(args, block, closure)));
+
         Ok(())
     }
 
@@ -211,16 +214,17 @@ impl Interpreter {
 
     fn call_function(&mut self, callee: Expr, arguments: Vec<Expr>) -> Result<Type, Error> {
         match self.evaluate(callee)? {
-            Type::Callable(args, stmts) => {
+            Type::Callable(args, stmts, mut closure) => {
                 if args.len() != arguments.len() {
                     return Err(Error::WrongNumberOfArgs(
                         "arguments supplied did not match function signature",
                     ));
                 }
 
-                let mut env = Rc::new(RefCell::new(Environment::new_from(
-                    self.environment.clone(),
-                )));
+                closure.enclosing = Some(self.environment.clone());
+                let closure = Rc::new(RefCell::new(closure));
+
+                let mut env = Rc::new(RefCell::new(Environment::new_from(closure.clone())));
 
                 for (i, arg) in args.iter().enumerate() {
                     let val = self.evaluate(arguments.get(i).unwrap().clone())?;
