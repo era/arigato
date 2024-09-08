@@ -162,6 +162,15 @@ impl Interpreter {
         block: Vec<Statement>,
     ) -> Result<(), Error> {
         let mut closure = Environment::new();
+        // FIXME: Right now the behaviour is to copy the values, so for the following code
+        // var a = 1
+        // fun b() {
+        //      a = 2
+        // }
+        // print(a)
+        // we are goint to print 1, although it would make more sense to print 2.
+        // we need to reference the same enviroment, but it should be a snapshot, it should not capture
+        // variables declared AFTER the function.
         closure.environment = self.environment.borrow_mut().environment.clone();
         self.environment
             .borrow_mut()
@@ -220,7 +229,8 @@ impl Interpreter {
                         "arguments supplied did not match function signature",
                     ));
                 }
-
+                // FIXME: Right now every function call has access to the previous block vars, and not only locals + global
+                // we need to define the globals in another env, and stop passing down the local env.
                 closure.enclosing = Some(self.environment.clone());
                 let closure = Rc::new(RefCell::new(closure));
 
