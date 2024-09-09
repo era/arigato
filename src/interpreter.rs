@@ -100,6 +100,7 @@ impl Environment {
 pub struct Interpreter {
     environment: Rc<RefCell<Environment>>,
     globals: Rc<RefCell<Environment>>,
+    locals: Option<HashMap<Expr, i64>>,
 }
 
 // a tree-walking interpreter implemented by using the visitor pattern.
@@ -113,13 +114,17 @@ impl Interpreter {
         );
 
         let environment = Rc::new(RefCell::new(Environment::new()));
+
         Self {
             environment,
             globals,
+            locals: None,
         }
     }
 
     pub fn interprete(&mut self, program: Vec<Statement>) -> Result<(), Error> {
+        let locals = Resolver::new().resolve(program.clone())?;
+        self.locals = Some(locals);
         for s in program {
             self.evaluate_stmt(s)?;
         }
@@ -419,6 +424,23 @@ impl Interpreter {
             },
             _ => unreachable!(),
         }
+    }
+}
+
+pub struct Resolver {
+    locals: HashMap<Expr, i64>,
+    scopes: Vec<HashMap<String, bool>>,
+}
+
+impl Resolver {
+    pub fn new() -> Self {
+        let locals = HashMap::new();
+        let scopes = Vec::new();
+
+        Self { locals, scopes }
+    }
+    pub fn resolve(self, program: Vec<Statement>) -> Result<HashMap<Expr, i64>, Error> {
+        todo!()
     }
 }
 
