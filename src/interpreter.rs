@@ -99,18 +99,24 @@ impl Environment {
 
 pub struct Interpreter {
     environment: Rc<RefCell<Environment>>,
+    globals: Rc<RefCell<Environment>>,
 }
 
 // a tree-walking interpreter implemented by using the visitor pattern.
 impl Interpreter {
     pub fn new() -> Self {
-        let env = Rc::new(RefCell::new(Environment::new()));
+        let globals = Rc::new(RefCell::new(Environment::new()));
 
-        env.borrow_mut().define(
+        globals.borrow_mut().define(
             "clock".to_owned(),
             Some(Type::NativeFunction(NativeFunction::Clock, vec![])),
         );
-        Self { environment: env }
+
+        let environment = Rc::new(RefCell::new(Environment::new()));
+        Self {
+            environment,
+            globals,
+        }
     }
 
     pub fn interprete(&mut self, program: Vec<Statement>) -> Result<(), Error> {
@@ -161,18 +167,9 @@ impl Interpreter {
         args: Vec<String>,
         block: Vec<Statement>,
     ) -> Result<(), Error> {
-        let mut closure = Environment::new();
-        // FIXME: Right now the behaviour is to copy the values, so for the following code
-        // var a = 1
-        // fun b() {
-        //      a = 2
-        // }
-        // print(a)
-        // we are goint to print 1, although it would make more sense to print 2.
-        // we need to reference the same enviroment, but it should be a snapshot, it should not capture
-        // variables declared AFTER the function.
-        closure.environment = self.environment.borrow_mut().environment.clone();
-        self.environment
+        // FIXME: Considering all the scope instead of the scope up to the function definition
+        let closure = Environment::new_from(self.environment.clone());
+        self.globals
             .borrow_mut()
             .define(name, Some(Type::Callable(args, block, closure)));
 
@@ -223,15 +220,13 @@ impl Interpreter {
 
     fn call_function(&mut self, callee: Expr, arguments: Vec<Expr>) -> Result<Type, Error> {
         match self.evaluate(callee)? {
-            Type::Callable(args, stmts, mut closure) => {
+            Type::Callable(args, stmts, closure) => {
                 if args.len() != arguments.len() {
                     return Err(Error::WrongNumberOfArgs(
                         "arguments supplied did not match function signature",
                     ));
                 }
-                // FIXME: Right now every function call has access to the previous block vars, and not only locals + global
-                // we need to define the globals in another env, and stop passing down the local env.
-                closure.enclosing = Some(self.environment.clone());
+
                 let closure = Rc::new(RefCell::new(closure));
 
                 let mut env = Rc::new(RefCell::new(Environment::new_from(closure.clone())));
@@ -316,7 +311,10 @@ impl Interpreter {
     }
 
     fn put_value(&mut self, id: String, value: Type) -> Result<(), Error> {
-        self.environment.borrow_mut().assign(id, Some(value))
+        match self.environment.borrow().get(&id)? {
+            Some(_) => self.environment.borrow_mut().assign(id, Some(value)),
+            None => self.globals.borrow_mut().assign(id, Some(value)),
+        }
     }
 
     fn assign_expr(&mut self, id: String, value: Expr) -> Result<Type, Error> {
