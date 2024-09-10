@@ -123,7 +123,7 @@ impl Interpreter {
     }
 
     pub fn interprete(&mut self, program: Vec<Statement>) -> Result<(), Error> {
-        let locals = Resolver::new().resolve(program.clone())?;
+        let locals = Resolver::new().run(program.clone())?;
         self.locals = Some(locals);
         for s in program {
             self.evaluate_stmt(s)?;
@@ -439,8 +439,88 @@ impl Resolver {
 
         Self { locals, scopes }
     }
-    pub fn resolve(self, program: Vec<Statement>) -> Result<HashMap<Expr, i64>, Error> {
+    pub fn run(self, program: Vec<Statement>) -> Result<HashMap<Expr, i64>, Error> {
         todo!()
+    }
+
+    fn begin_scope(&mut self) {
+        self.scopes.push(HashMap::new());
+    }
+
+    fn end_scope(&mut self) {
+        self.scopes.pop();
+    }
+
+    fn declare(&mut self, id: String) -> Result<(), Error> {
+        match self.scopes.last_mut() {
+            None => Ok(()),
+            Some(t) => {
+                t.insert(id, false);
+                Ok(())
+            }
+        }
+    }
+
+    fn define(&mut self, id: String) -> Result<(), Error> {
+        match self.scopes.last_mut() {
+            None => Ok(()),
+            Some(t) => {
+                t.insert(id, true);
+                Ok(())
+            }
+        }
+    }
+
+    fn resolve(&mut self, stmts: Vec<Statement>) -> Result<(), Error> {
+        for statement in stmts {
+            match statement {
+                _ => todo!(),
+            };
+        }
+        todo!()
+    }
+
+    fn resolve_expr(&mut self, expr: Expr) -> Result<(), Error> {
+        todo!()
+    }
+
+    fn resolve_local(&mut self, id: &str) -> Result<(), Error> {
+        todo!()
+    }
+
+    fn block_stmt(&mut self, stmts: Vec<Statement>) -> Result<(), Error> {
+        self.begin_scope();
+        self.resolve(stmts)?;
+        self.end_scope();
+
+        Ok(())
+    }
+
+    fn var_declaration(&mut self, id: String, expr: Option<Box<Expr>>) -> Result<(), Error> {
+        self.declare(id.clone())?;
+        if let Some(e) = expr {
+            self.resolve_expr(*e)?;
+        }
+        self.define(id)?;
+        Ok(())
+    }
+
+    fn literal(&mut self, literal: Token) -> Result<(), Error> {
+        let literal = match literal {
+            Token::Identifier(name) => name,
+            _ => return Ok(()),
+        };
+        if let Some(l) = self.scopes.last() {
+            match l.get(&literal) {
+                Some(false) => {
+                    return Err(Error::UnexpectedExpr(
+                        "can't read local variable in its own initializer.",
+                    ))
+                }
+                _ => self.resolve_local(&literal)?,
+            }
+        }
+        self.resolve_local(&literal)
     }
 }
 
