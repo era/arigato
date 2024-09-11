@@ -474,6 +474,9 @@ impl Resolver {
     fn resolve(&mut self, stmts: Vec<Statement>) -> Result<(), Error> {
         for statement in stmts {
             match statement {
+                Statement::Expr(expr) => self.resolve_expr(expr)?,
+                Statement::Block(stmts) => self.block_stmt(stmts)?,
+                Statement::VarDeclaration(name, expr) => self.var_declaration(name, expr)?,
                 _ => todo!(),
             };
         }
@@ -481,6 +484,11 @@ impl Resolver {
     }
 
     fn resolve_expr(&mut self, expr: Expr) -> Result<(), Error> {
+        match expr {
+            Expr::Literal(l) => self.literal(l)?,
+            _ => todo!(),
+        }
+
         todo!()
     }
 
