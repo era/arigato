@@ -100,7 +100,7 @@ impl Environment {
 pub struct Interpreter {
     environment: Rc<RefCell<Environment>>,
     globals: Rc<RefCell<Environment>>,
-    locals: Option<HashMap<Expr, i64>>,
+    locals: Option<HashMap<String, i64>>,
 }
 
 // a tree-walking interpreter implemented by using the visitor pattern.
@@ -428,7 +428,7 @@ impl Interpreter {
 }
 
 pub struct Resolver {
-    locals: HashMap<Expr, i64>,
+    locals: HashMap<String, i64>,
     scopes: Vec<HashMap<String, bool>>,
 }
 
@@ -439,7 +439,7 @@ impl Resolver {
 
         Self { locals, scopes }
     }
-    pub fn run(self, program: Vec<Statement>) -> Result<HashMap<Expr, i64>, Error> {
+    pub fn run(self, program: Vec<Statement>) -> Result<HashMap<String, i64>, Error> {
         todo!()
     }
 
@@ -485,7 +485,14 @@ impl Resolver {
     }
 
     fn resolve_local(&mut self, id: &str) -> Result<(), Error> {
-        todo!()
+        for (i, v) in self.scopes.iter().enumerate() {
+            if v.contains_key(id) {
+                self.locals
+                    .insert(id.to_owned(), (self.scopes.len() - 1 - i) as i64);
+            }
+        }
+
+        Ok(())
     }
 
     fn block_stmt(&mut self, stmts: Vec<Statement>) -> Result<(), Error> {
