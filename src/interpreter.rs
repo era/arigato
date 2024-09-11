@@ -486,6 +486,7 @@ impl Resolver {
     fn resolve_expr(&mut self, expr: Expr) -> Result<(), Error> {
         match expr {
             Expr::Literal(l) => self.literal(l)?,
+            Expr::Assign(name, expr) => self.assign_expr(name, *expr)?,
             _ => todo!(),
         }
 
@@ -501,6 +502,12 @@ impl Resolver {
         }
 
         Ok(())
+    }
+
+    fn assign_expr(&mut self, name: String, expr: Expr) -> Result<(), Error> {
+        self.resolve_expr(expr)?;
+
+        self.resolve_local(&name)
     }
 
     fn block_stmt(&mut self, stmts: Vec<Statement>) -> Result<(), Error> {
