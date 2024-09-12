@@ -473,13 +473,23 @@ impl Resolver {
 
     fn resolve(&mut self, stmts: Vec<Statement>) -> Result<(), Error> {
         for statement in stmts {
-            match statement {
-                Statement::Expr(expr) => self.resolve_expr(expr)?,
-                Statement::Block(stmts) => self.block_stmt(stmts)?,
-                Statement::VarDeclaration(name, expr) => self.var_declaration(name, expr)?,
-                _ => todo!(),
-            };
+            self.resolve_stmt(statement)?;
         }
+        todo!()
+    }
+    fn resolve_stmt(&mut self, stmt: Statement) -> Result<(), Error> {
+        match stmt {
+            Statement::Expr(expr) => self.resolve_expr(expr)?,
+            Statement::Block(stmts) => self.block_stmt(stmts)?,
+            Statement::VarDeclaration(name, expr) => self.var_declaration(name, expr)?,
+            Statement::FnDeclaration(name, params, body) => {
+                self.function_stmt(name, params, body)?
+            }
+            Statement::IfStatement(condition, if_true, if_false) => {
+                self.if_statement(condition, *if_true, if_false)?
+            }
+            _ => todo!(),
+        };
         todo!()
     }
 
@@ -499,6 +509,21 @@ impl Resolver {
                 self.locals
                     .insert(id.to_owned(), (self.scopes.len() - 1 - i) as i64);
             }
+        }
+
+        Ok(())
+    }
+
+    fn if_statement(
+        &mut self,
+        condition: Expr,
+        if_true: Statement,
+        if_false: Option<Box<Statement>>,
+    ) -> Result<(), Error> {
+        self.resolve_expr(condition)?;
+        self.resolve_stmt(if_true)?;
+        if let Some(if_false) = if_false {
+            self.resolve_stmt(*if_false)?;
         }
 
         Ok(())
