@@ -504,6 +504,35 @@ impl Resolver {
         Ok(())
     }
 
+    fn function_stmt(
+        &mut self,
+        name: String,
+        args: Vec<String>,
+        stmts: Vec<Statement>,
+    ) -> Result<(), Error> {
+        self.declare(name.clone())?;
+        self.define(name.clone())?;
+
+        self.resolve_function(name, args, stmts)
+    }
+
+    fn resolve_function(
+        &mut self,
+        name: String,
+        args: Vec<String>,
+        stmts: Vec<Statement>,
+    ) -> Result<(), Error> {
+        self.begin_scope();
+        for arg in args {
+            self.declare(arg.clone())?;
+            self.define(arg.clone())?;
+        }
+        self.resolve(stmts)?;
+        self.end_scope();
+
+        Ok(())
+    }
+
     fn assign_expr(&mut self, name: String, expr: Expr) -> Result<(), Error> {
         self.resolve_expr(expr)?;
 
