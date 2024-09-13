@@ -488,6 +488,11 @@ impl Resolver {
             Statement::IfStatement(condition, if_true, if_false) => {
                 self.if_statement(condition, *if_true, if_false)?
             }
+            Statement::Return(expr) => self.resolve_expr(expr)?,
+            Statement::While(condition, statement) => {
+                self.resolve_expr(condition)?;
+                self.resolve_stmt(*statement)?;
+            }
             _ => todo!(),
         };
         todo!()
@@ -495,12 +500,15 @@ impl Resolver {
 
     fn resolve_expr(&mut self, expr: Expr) -> Result<(), Error> {
         match expr {
-            Expr::Literal(l) => self.literal(l)?,
-            Expr::Assign(name, expr) => self.assign_expr(name, *expr)?,
-            _ => todo!(),
+            Expr::Literal(l) => self.literal(l),
+            Expr::Assign(name, expr) => self.assign_expr(name, *expr),
+            Expr::Call(id, args) => self.call_expr(*id, args),
+            Expr::Or(left, right) | Expr::And(left, right) | Expr::Binary(left, _, right) => {
+                self.logical_op(*left, *right)
+            }
+            Expr::Unary(_, expr) | Expr::Grouping(expr) => self.resolve_expr(*expr),
+            Expr::EOF => Ok(()),
         }
-
-        todo!()
     }
 
     fn resolve_local(&mut self, id: &str) -> Result<(), Error> {
@@ -509,6 +517,20 @@ impl Resolver {
                 self.locals
                     .insert(id.to_owned(), (self.scopes.len() - 1 - i) as i64);
             }
+        }
+
+        Ok(())
+    }
+
+    fn logical_op(&mut self, left: Expr, right: Expr) -> Result<(), Error> {
+        self.resolve_expr(left)?;
+        self.resolve_expr(right)
+    }
+
+    fn call_expr(&mut self, id: Expr, args: Vec<Expr>) -> Result<(), Error> {
+        self.resolve_expr(id)?;
+        for arg in args {
+            self.resolve_expr(arg)?;
         }
 
         Ok(())
