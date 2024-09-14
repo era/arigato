@@ -439,8 +439,10 @@ impl Resolver {
 
         Self { locals, scopes }
     }
-    pub fn run(self, program: Vec<Statement>) -> Result<HashMap<String, i64>, Error> {
-        todo!()
+    pub fn run(mut self, program: Vec<Statement>) -> Result<HashMap<String, i64>, Error> {
+        self.resolve(program)?;
+
+        Ok(self.locals)
     }
 
     fn begin_scope(&mut self) {
@@ -475,7 +477,7 @@ impl Resolver {
         for statement in stmts {
             self.resolve_stmt(statement)?;
         }
-        todo!()
+        Ok(())
     }
     fn resolve_stmt(&mut self, stmt: Statement) -> Result<(), Error> {
         match stmt {
@@ -493,9 +495,8 @@ impl Resolver {
                 self.resolve_expr(condition)?;
                 self.resolve_stmt(*statement)?;
             }
-            _ => todo!(),
         };
-        todo!()
+        Ok(())
     }
 
     fn resolve_expr(&mut self, expr: Expr) -> Result<(), Error> {
