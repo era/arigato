@@ -69,6 +69,19 @@ impl Environment {
         self.environment.insert(identifier, val);
     }
 
+    fn define_at(&mut self, distance: i64, identifier: String, val: Option<Type>) {
+        self.ancestor(distance).borrow_mut().define(identifier, val)
+    }
+
+    fn ancestor(&mut self, distance: i64) -> Rc<RefCell<Environment>> {
+        let mut ancestor = None;
+        for _ in 0..distance {
+            ancestor = self.enclosing.clone();
+        }
+
+        ancestor.expect("resolver found the wrong distance for the variable definition")
+    }
+
     fn assign(&mut self, identifier: String, val: Option<Type>) -> Result<(), Error> {
         match self.environment.get(&identifier) {
             None => {
@@ -81,6 +94,10 @@ impl Environment {
             }
         }
         Err(Error::NoSuchVariable)
+    }
+
+    fn get_at(&mut self, distance: i64, identifier: &str) -> Result<Option<Type>, Error> {
+        self.ancestor(distance).borrow().get(identifier)
     }
 
     fn get(&self, identifier: &str) -> Result<Option<Type>, Error> {
@@ -198,15 +215,26 @@ impl Interpreter {
         }
     }
 
+    fn define_var(&mut self, identifier: String, val: Option<Type>) -> Result<(), Error> {
+        let distance = self.locals.as_ref().unwrap().get(&identifier);
+        match distance {
+            None => self.globals.borrow_mut().define(identifier, val),
+            Some(t) => self
+                .environment
+                .borrow_mut()
+                .define_at(t.to_owned(), identifier, val),
+        }
+        Ok(())
+    }
+
     fn var_declaration(&mut self, identifier: String, val: Option<Box<Expr>>) -> Result<(), Error> {
         let value = val.map(|v| self.evaluate(*v));
 
         match value {
-            Some(Err(e)) => return Err(e),
-            Some(Ok(v)) => self.environment.borrow_mut().define(identifier, Some(v)),
-            None => self.environment.borrow_mut().define(identifier, None),
-        };
-        Ok(())
+            Some(Err(e)) => Err(e),
+            Some(Ok(v)) => self.define_var(identifier, Some(v)),
+            None => self.define_var(identifier, None),
+        }
     }
 
     fn evaluate(&mut self, expr: Expr) -> Result<Type, Error> {
@@ -304,14 +332,22 @@ impl Interpreter {
                 })?))
             }
             Token::Text(t) => Ok(Type::Text(t)),
-            Token::Identifier(id) => {
-                if let Some(t) = self.environment.borrow_mut().get(&id)? {
-                    Ok(t)
-                } else {
-                    Err(Error::VariableNotInitialized)
-                }
-            }
+            Token::Identifier(id) => self.get_var(id),
             _ => Err(Error::UnexpectedExpr("expecting only literals")),
+        }
+    }
+
+    fn get_var(&mut self, id: String) -> Result<Type, Error> {
+        let distance = self.locals.as_ref().unwrap().get(&id);
+        let val = match distance {
+            None => self.globals.borrow().get(&id),
+            Some(t) => self.environment.borrow_mut().get_at(t.to_owned(), &id),
+        };
+
+        match val {
+            Ok(Some(v)) => Ok(v),
+            Err(e) => Err(e),
+            Ok(None) => Err(Error::VariableNotInitialized),
         }
     }
 
